@@ -1,0 +1,29 @@
+{
+  "expo": {
+    "name": "Orbacle",
+    "slug": "orbacle",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "backgroundColor": "#0a0a1a"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.orbacle.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0a0a1a"
+      },
+      "package": "com.orbacle.app"
+    },
+    "plugins": [
+      "expo-asset"
+    ]
+  }
+}
