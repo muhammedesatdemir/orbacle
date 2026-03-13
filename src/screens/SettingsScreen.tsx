@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, Switch, Alert } from 'react-native';
+import { StyleSheet, Text, View, Switch } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useI18n } from '../i18n';
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
 import { PrimaryButton } from '../components/PrimaryButton';
+import { ConfirmModal } from '../components/ConfirmModal';
 import { getHapticsEnabled, saveHapticsEnabled } from '../storage/settingsStorage';
 import { clearHistory } from '../storage/historyStorage';
 import { colors } from '../constants/colors';
@@ -15,6 +16,7 @@ export const SettingsScreen: React.FC = () => {
   const { t, language, setLanguage } = useI18n();
   const insets = useSafeAreaInsets();
   const [hapticsOn, setHapticsOn] = useState(true);
+  const [showClearModal, setShowClearModal] = useState(false);
 
   useEffect(() => {
     getHapticsEnabled().then(setHapticsOn);
@@ -25,15 +27,9 @@ export const SettingsScreen: React.FC = () => {
     saveHapticsEnabled(val);
   };
 
-  const handleClearHistory = () => {
-    Alert.alert(t('clear_history'), t('clear_history_confirm'), [
-      { text: t('cancel'), style: 'cancel' },
-      {
-        text: t('confirm'),
-        style: 'destructive',
-        onPress: () => clearHistory(),
-      },
-    ]);
+  const handleClearConfirm = () => {
+    setShowClearModal(false);
+    clearHistory();
   };
 
   return (
@@ -71,7 +67,7 @@ export const SettingsScreen: React.FC = () => {
         <View style={styles.section}>
           <PrimaryButton
             title={t('clear_history')}
-            onPress={handleClearHistory}
+            onPress={() => setShowClearModal(true)}
             variant="ghost"
           />
         </View>
@@ -83,6 +79,16 @@ export const SettingsScreen: React.FC = () => {
           <Text style={styles.version}>{t('version')} 1.0.0</Text>
         </View>
       </View>
+
+      <ConfirmModal
+        visible={showClearModal}
+        title={t('clear_history')}
+        description={t('clear_history_confirm')}
+        cancelLabel={t('cancel')}
+        confirmLabel={t('confirm')}
+        onCancel={() => setShowClearModal(false)}
+        onConfirm={handleClearConfirm}
+      />
     </LinearGradient>
   );
 };
