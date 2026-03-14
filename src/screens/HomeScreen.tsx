@@ -93,7 +93,7 @@ export const HomeScreen: React.FC = () => {
       <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 80}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 20}
       >
         {/* Title */}
         <Text style={styles.title}>{t('app_name')}</Text>

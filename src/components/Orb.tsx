@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { StyleSheet, Pressable, View } from 'react-native';
+import { StyleSheet, Pressable, View, Image } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -20,81 +20,41 @@ interface OrbProps {
   auraAnimatedStyle: any;
 }
 
-const ORB_SIZE = 200;
-const R = ORB_SIZE / 2;
+const ORB_SIZE = 270;
 
-// Internal mist blob that drifts slowly
-function MistLayer({
+const orbImage = require('../../assets/orb.webp');
+
+// Very soft drifting mist blob
+function MistBlob({
   size,
-  color,
   offsetX,
   offsetY,
-  duration,
-  delay,
+  dur,
+  color,
 }: {
   size: number;
-  color: readonly [string, string, ...string[]];
   offsetX: number;
   offsetY: number;
-  duration: number;
-  delay: number;
+  dur: number;
+  color: string;
 }) {
   const drift = useSharedValue(0);
 
   useEffect(() => {
     drift.value = withRepeat(
-      withTiming(1, { duration, easing: Easing.inOut(Easing.sin) }),
+      withTiming(1, { duration: dur, easing: Easing.inOut(Easing.sin) }),
       -1,
       true,
     );
   }, []);
 
-  const style = useAnimatedStyle(() => {
-    const tx = interpolate(drift.value, [0, 1], [-offsetX, offsetX]);
-    const ty = interpolate(drift.value, [0, 1], [-offsetY, offsetY]);
-    const opacity = interpolate(drift.value, [0, 0.5, 1], [0.3, 0.6, 0.3]);
-    return {
-      transform: [{ translateX: tx }, { translateY: ty }],
-      opacity,
-    };
-  });
-
-  return (
-    <Animated.View
-      style={[
-        {
-          position: 'absolute',
-          width: size,
-          height: size,
-          borderRadius: size / 2,
-        },
-        style,
-      ]}
-    >
-      <LinearGradient
-        colors={color}
-        start={{ x: 0.2, y: 0.2 }}
-        end={{ x: 0.8, y: 0.8 }}
-        style={{ width: size, height: size, borderRadius: size / 2 }}
-      />
-    </Animated.View>
-  );
-}
-
-// Slowly rotating ring/haze
-function RotatingHaze({ duration, size, opacity }: { duration: number; size: number; opacity: number }) {
-  const rotation = useSharedValue(0);
-
-  useEffect(() => {
-    rotation.value = withRepeat(
-      withTiming(360, { duration, easing: Easing.linear }),
-      -1,
-      false,
-    );
-  }, []);
-
   const style = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${rotation.value}deg` }],
+    transform: [
+      { translateX: interpolate(drift.value, [0, 1], [-offsetX, offsetX]) },
+      { translateY: interpolate(drift.value, [0, 1], [-offsetY, offsetY]) },
+      { scale: interpolate(drift.value, [0, 0.5, 1], [0.9, 1.12, 0.9]) },
+    ],
+    opacity: interpolate(drift.value, [0, 0.5, 1], [0.06, 0.12, 0.06]),
   }));
 
   return (
@@ -104,27 +64,12 @@ function RotatingHaze({ duration, size, opacity }: { duration: number; size: num
           position: 'absolute',
           width: size,
           height: size,
+          borderRadius: size / 2,
+          backgroundColor: color,
         },
         style,
       ]}
-    >
-      <LinearGradient
-        colors={[
-          'transparent',
-          `rgba(139, 92, 246, ${opacity})`,
-          'transparent',
-          `rgba(96, 165, 250, ${opacity * 0.5})`,
-          'transparent',
-        ]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={{
-          width: size,
-          height: size,
-          borderRadius: size / 2,
-        }}
-      />
-    </Animated.View>
+    />
   );
 }
 
@@ -138,239 +83,138 @@ export const Orb: React.FC<OrbProps> = ({
 }) => {
   return (
     <View style={styles.container}>
-      {/* Outer aura — soft atmospheric ring */}
-      <Animated.View style={[styles.aura, auraAnimatedStyle]} />
+      {/* Drifting mist — very subtle atmospheric fog */}
+      <View style={styles.mistLayer}>
+        <MistBlob size={180} offsetX={20} offsetY={12} dur={8000} color="rgba(139, 92, 246, 0.10)" />
+        <MistBlob size={150} offsetX={-14} offsetY={18} dur={10000} color="rgba(109, 40, 217, 0.08)" />
+        <MistBlob size={120} offsetX={16} offsetY={-10} dur={7000} color="rgba(232, 121, 249, 0.07)" />
+      </View>
 
-      {/* Secondary glow ring */}
-      <Animated.View style={[styles.glowOuter, glowAnimatedStyle]} />
+      {/* Ambient aura — soft radial glow, no hard edge */}
+      <Animated.View style={[styles.aura, auraAnimatedStyle]}>
+        <LinearGradient
+          colors={[
+            'rgba(139, 92, 246, 0.25)',
+            'rgba(139, 92, 246, 0.12)',
+            'rgba(139, 92, 246, 0.04)',
+            'transparent',
+          ]}
+          start={{ x: 0.5, y: 0.5 }}
+          end={{ x: 0.5, y: 0 }}
+          style={styles.auraGrad}
+        />
+      </Animated.View>
 
-      {/* Burst effect */}
-      <Animated.View style={[styles.burst, burstAnimatedStyle]} />
+      {/* Glow intensifier — driven by glowAnimatedStyle on tap */}
+      <Animated.View style={[styles.glowLayer, glowAnimatedStyle]}>
+        <LinearGradient
+          colors={[
+            'rgba(167, 139, 250, 0.3)',
+            'rgba(139, 92, 246, 0.1)',
+            'transparent',
+          ]}
+          start={{ x: 0.5, y: 0.5 }}
+          end={{ x: 0.5, y: 0 }}
+          style={styles.auraGrad}
+        />
+      </Animated.View>
 
-      {/* Inner glow ring */}
-      <Animated.View style={[styles.glowInner, glowAnimatedStyle]} />
+      {/* Burst effect on tap */}
+      <Animated.View style={[styles.burst, burstAnimatedStyle]}>
+        <LinearGradient
+          colors={[
+            'rgba(196, 132, 252, 0.4)',
+            'rgba(139, 92, 246, 0.15)',
+            'transparent',
+          ]}
+          start={{ x: 0.5, y: 0.5 }}
+          end={{ x: 0.5, y: 0 }}
+          style={styles.auraGrad}
+        />
+      </Animated.View>
 
-      {/* Main orb */}
+      {/* Crystal ball image */}
       <Pressable onPress={onPress} disabled={disabled}>
-        <Animated.View style={[styles.orbWrapper, orbAnimatedStyle]}>
-          {/* Base sphere gradient — deep dark core */}
-          <LinearGradient
-            colors={['#2d1b69', '#1a0a3e', '#0d0520', '#060210']}
-            start={{ x: 0.3, y: 0 }}
-            end={{ x: 0.7, y: 1 }}
-            style={styles.orb}
-          >
-            {/* Mist layers — drifting fog inside the orb */}
-            <View style={styles.mistContainer}>
-              <MistLayer
-                size={ORB_SIZE * 0.7}
-                color={['transparent', 'rgba(139, 92, 246, 0.4)', 'rgba(88, 28, 135, 0.2)', 'transparent']}
-                offsetX={15}
-                offsetY={10}
-                duration={6000}
-                delay={0}
-              />
-              <MistLayer
-                size={ORB_SIZE * 0.55}
-                color={['transparent', 'rgba(96, 165, 250, 0.25)', 'rgba(139, 92, 246, 0.3)', 'transparent']}
-                offsetX={-12}
-                offsetY={18}
-                duration={8000}
-                delay={500}
-              />
-              <MistLayer
-                size={ORB_SIZE * 0.45}
-                color={['transparent', 'rgba(192, 132, 252, 0.35)', 'transparent']}
-                offsetX={20}
-                offsetY={-8}
-                duration={5000}
-                delay={1000}
-              />
-              <MistLayer
-                size={ORB_SIZE * 0.6}
-                color={['transparent', 'rgba(167, 139, 250, 0.2)', 'rgba(6, 182, 212, 0.15)', 'transparent']}
-                offsetX={-8}
-                offsetY={-15}
-                duration={7000}
-                delay={200}
-              />
-              {/* Smaller wisps for detail */}
-              <MistLayer
-                size={ORB_SIZE * 0.3}
-                color={['transparent', 'rgba(232, 121, 249, 0.3)', 'transparent']}
-                offsetX={25}
-                offsetY={5}
-                duration={4500}
-                delay={800}
-              />
-            </View>
-
-            {/* Rotating haze — adds slow swirling movement */}
-            <View style={styles.hazeContainer}>
-              <RotatingHaze duration={20000} size={ORB_SIZE * 0.9} opacity={0.2} />
-              <RotatingHaze duration={30000} size={ORB_SIZE * 0.7} opacity={0.15} />
-            </View>
-
-            {/* Inner luminous core — center glow */}
-            <LinearGradient
-              colors={[
-                'rgba(167, 139, 250, 0.35)',
-                'rgba(139, 92, 246, 0.15)',
-                'transparent',
-              ]}
-              start={{ x: 0.5, y: 0.3 }}
-              end={{ x: 0.5, y: 0.9 }}
-              style={styles.innerCore}
-            />
-
-            {/* Specular highlight — glassy reflection at top */}
-            <LinearGradient
-              colors={[
-                'rgba(255, 255, 255, 0.35)',
-                'rgba(255, 255, 255, 0.12)',
-                'rgba(255, 255, 255, 0.02)',
-                'transparent',
-              ]}
-              start={{ x: 0.4, y: 0 }}
-              end={{ x: 0.6, y: 0.5 }}
-              style={styles.specularMain}
-            />
-
-            {/* Secondary smaller highlight */}
-            <LinearGradient
-              colors={[
-                'rgba(255, 255, 255, 0.2)',
-                'rgba(255, 255, 255, 0.05)',
-                'transparent',
-              ]}
-              start={{ x: 0.3, y: 0 }}
-              end={{ x: 0.5, y: 0.35 }}
-              style={styles.specularSmall}
-            />
-
-            {/* Rim light — subtle edge glow at bottom */}
-            <LinearGradient
-              colors={[
-                'transparent',
-                'transparent',
-                'rgba(139, 92, 246, 0.15)',
-                'rgba(96, 165, 250, 0.1)',
-              ]}
-              start={{ x: 0.5, y: 0 }}
-              end={{ x: 0.5, y: 1 }}
-              style={styles.rimLight}
-            />
-
-            {/* Glass surface overlay — adds "glass ball" feel */}
-            <LinearGradient
-              colors={[
-                'rgba(255, 255, 255, 0.06)',
-                'transparent',
-                'transparent',
-                'rgba(255, 255, 255, 0.03)',
-              ]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.glassSurface}
-            />
-          </LinearGradient>
+        <Animated.View style={[styles.imageWrapper, orbAnimatedStyle]}>
+          <Image source={orbImage} style={styles.orbImage} resizeMode="contain" />
         </Animated.View>
       </Pressable>
+
+      {/* Floor glow — elliptical light beneath the stand */}
+      <Animated.View style={[styles.floorGlow, auraAnimatedStyle]}>
+        <LinearGradient
+          colors={[
+            'rgba(139, 92, 246, 0.15)',
+            'rgba(192, 132, 252, 0.06)',
+            'transparent',
+          ]}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+          style={styles.floorGlowGrad}
+        />
+      </Animated.View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    width: ORB_SIZE * 1.8,
-    height: ORB_SIZE * 1.8,
+    width: ORB_SIZE * 1.5,
+    height: ORB_SIZE * 1.5,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  orbWrapper: {
-    width: ORB_SIZE,
-    height: ORB_SIZE,
-    borderRadius: R,
-    shadowColor: '#8b5cf6',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.9,
-    shadowRadius: 40,
-    elevation: 25,
-  },
-  orb: {
-    width: ORB_SIZE,
-    height: ORB_SIZE,
-    borderRadius: R,
-    overflow: 'hidden',
-  },
-  mistContainer: {
+  mistLayer: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  hazeContainer: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  innerCore: {
-    position: 'absolute',
-    width: ORB_SIZE * 0.6,
-    height: ORB_SIZE * 0.6,
-    borderRadius: ORB_SIZE * 0.3,
-    left: ORB_SIZE * 0.2,
-    top: ORB_SIZE * 0.2,
-  },
-  specularMain: {
-    position: 'absolute',
-    width: ORB_SIZE * 0.55,
-    height: ORB_SIZE * 0.35,
-    borderRadius: ORB_SIZE,
-    top: ORB_SIZE * 0.06,
-    left: ORB_SIZE * 0.18,
-  },
-  specularSmall: {
-    position: 'absolute',
-    width: ORB_SIZE * 0.25,
-    height: ORB_SIZE * 0.15,
-    borderRadius: ORB_SIZE,
-    top: ORB_SIZE * 0.1,
-    left: ORB_SIZE * 0.25,
-  },
-  rimLight: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: R,
-  },
-  glassSurface: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: R,
-  },
-  glowOuter: {
-    position: 'absolute',
-    width: ORB_SIZE * 1.4,
-    height: ORB_SIZE * 1.4,
-    borderRadius: ORB_SIZE,
-    backgroundColor: 'rgba(139, 92, 246, 0.15)',
-  },
-  glowInner: {
-    position: 'absolute',
-    width: ORB_SIZE * 1.15,
-    height: ORB_SIZE * 1.15,
-    borderRadius: ORB_SIZE,
-    backgroundColor: 'rgba(139, 92, 246, 0.25)',
   },
   aura: {
     position: 'absolute',
-    width: ORB_SIZE * 1.7,
-    height: ORB_SIZE * 1.7,
+    width: ORB_SIZE * 1.3,
+    height: ORB_SIZE * 1.3,
     borderRadius: ORB_SIZE,
-    backgroundColor: 'rgba(139, 92, 246, 0.08)',
+    overflow: 'hidden',
+  },
+  glowLayer: {
+    position: 'absolute',
+    width: ORB_SIZE * 1.1,
+    height: ORB_SIZE * 1.1,
+    borderRadius: ORB_SIZE,
+    overflow: 'hidden',
+  },
+  auraGrad: {
+    width: '100%',
+    height: '100%',
+    borderRadius: ORB_SIZE,
   },
   burst: {
     position: 'absolute',
+    width: ORB_SIZE * 0.85,
+    height: ORB_SIZE * 0.85,
+    borderRadius: ORB_SIZE,
+    overflow: 'hidden',
+  },
+  imageWrapper: {
     width: ORB_SIZE,
     height: ORB_SIZE,
-    borderRadius: R,
-    backgroundColor: colors.orbBurst,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  orbImage: {
+    width: ORB_SIZE,
+    height: ORB_SIZE,
+  },
+  floorGlow: {
+    position: 'absolute',
+    bottom: ORB_SIZE * 0.05,
+    width: ORB_SIZE * 0.7,
+    height: ORB_SIZE * 0.12,
+    borderRadius: ORB_SIZE,
+    overflow: 'hidden',
+  },
+  floorGlowGrad: {
+    width: '100%',
+    height: '100%',
   },
 });
