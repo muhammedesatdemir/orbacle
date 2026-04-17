@@ -76,6 +76,8 @@ export const SettingsScreen: React.FC = () => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('about')}</Text>
           <Text style={styles.aboutText}>{t('about_text')}</Text>
+          <Text style={styles.creditPrimary}>{t('about_credits_primary')}</Text>
+          <Text style={styles.creditSecondary}>{t('about_credits_secondary')}</Text>
           <Text style={styles.version}>{t('version')} 1.0.0</Text>
         </View>
       </View>
@@ -133,12 +135,32 @@ const styles = StyleSheet.create({
   },
   aboutText: {
     ...typography.body,
-    color: colors.textSecondary,
-    lineHeight: 22,
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.92)',
+    lineHeight: 24,
+  },
+  creditPrimary: {
+    ...typography.body,
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.78)',
+    fontWeight: '700',
+    fontStyle: 'italic',
+    lineHeight: 20,
+    marginTop: spacing.xl,
+  },
+  creditSecondary: {
+    ...typography.body,
+    fontSize: 12,
+    fontWeight: '400',
+    fontStyle: 'normal',
+    color: 'rgba(255, 255, 255, 0.45)',
+    lineHeight: 17,
+    marginTop: 4,
   },
   version: {
     ...typography.caption,
-    color: colors.textMuted,
-    marginTop: spacing.sm,
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.3)',
+    marginTop: spacing.lg,
   },
 });
