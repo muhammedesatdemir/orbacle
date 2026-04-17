@@ -17,7 +17,9 @@
       "bundleIdentifier": "com.orbacle.app"
     },
     "android": {
+      "icon": "./assets/android-icon.png",
       "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-foreground.png",
         "backgroundColor": "#0a0a1a"
       },
       "package": "com.orbacle.app"
