@@ -25,5 +25,7 @@
   "confirm": "Onayla",
   "share_prefix": "Orbacle'a bir soru sordum.\n\nOrbacle dedi ki:\n\n",
   "enter_question": "Lütfen önce bir soru girin",
+  "ask_another": "Başka bir soru...",
+  "ask_orb_a11y": "Küreye sor",
   "home": "Ana Sayfa"
 }

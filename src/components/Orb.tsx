@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo } from 'react';
-import { StyleSheet, Pressable, View, Image } from 'react-native';
+import { StyleSheet, Pressable, View, Image, useWindowDimensions } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -11,7 +11,6 @@ import Animated, {
   interpolate,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors } from '../constants/colors';
 
 interface OrbProps {
   disabled: boolean;
@@ -20,9 +19,11 @@ interface OrbProps {
   glowAnimatedStyle: any;
   burstAnimatedStyle: any;
   auraAnimatedStyle: any;
+  accessibilityLabel?: string;
 }
 
-const ORB_SIZE = 270;
+const ORB_MAX = 300;
+const ORB_WIDTH_RATIO = 0.7;
 
 const orbImage = require('../../assets/orb.webp');
 
@@ -72,6 +73,8 @@ function Mist({
         { position: 'absolute', width: w, height: h, borderRadius: r, backgroundColor: clr },
         style,
       ]}
+      importantForAccessibility="no-hide-descendants"
+      accessibilityElementsHidden
     />
   );
 }
@@ -115,11 +118,13 @@ function Sparkle({ x, y, size, delay, dur, color }: {
         },
         style,
       ]}
+      importantForAccessibility="no-hide-descendants"
+      accessibilityElementsHidden
     />
   );
 }
 
-function useSparkles() {
+function useSparkles(orbSize: number) {
   return useMemo(() => [
     { x: 0.15, y: 0.2, s: 2, d: 1200, dl: 0, c: '#e0d0ff' },
     { x: 0.82, y: 0.25, s: 2.5, d: 1500, dl: 400, c: '#ffffff' },
@@ -131,14 +136,14 @@ function useSparkles() {
   ].map((sp) => (
     <Sparkle
       key={`${sp.x}-${sp.y}`}
-      x={ORB_SIZE * 1.5 * sp.x}
-      y={ORB_SIZE * 1.5 * sp.y}
+      x={orbSize * 1.5 * sp.x}
+      y={orbSize * 1.5 * sp.y}
       size={sp.s}
       dur={sp.d}
       delay={sp.dl}
       color={sp.c}
     />
-  )), []);
+  )), [orbSize]);
 }
 
 export const Orb: React.FC<OrbProps> = ({
@@ -148,13 +153,18 @@ export const Orb: React.FC<OrbProps> = ({
   glowAnimatedStyle,
   burstAnimatedStyle,
   auraAnimatedStyle,
+  accessibilityLabel,
 }) => {
-  const sparkles = useSparkles();
+  const { width } = useWindowDimensions();
+  const orbSize = Math.min(ORB_MAX, Math.round(width * ORB_WIDTH_RATIO));
+  const container = orbSize * 1.5;
+
+  const sparkles = useSparkles(orbSize);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { width: container, height: container }]}>
       {/* Sparkle particles — scattered around the orb */}
-      <View style={styles.sparkleLayer}>{sparkles}</View>
+      <View style={StyleSheet.absoluteFillObject}>{sparkles}</View>
 
       {/* Drifting mist — organic fog behind and around the orb */}
       <View style={styles.mistLayer}>
@@ -164,8 +174,19 @@ export const Orb: React.FC<OrbProps> = ({
         <Mist w={170} h={120} ox={-10} oy={-14} dur={10000} clr="rgba(167, 139, 250, 0.06)" opRange={[0.03, 0.08]} />
       </View>
 
-      {/* Outer aura — very soft ambient halo */}
-      <Animated.View style={[styles.auraOuter, auraAnimatedStyle]}>
+      {/* Outer aura */}
+      <Animated.View
+        style={[
+          {
+            position: 'absolute',
+            width: orbSize * 1.35,
+            height: orbSize * 1.35,
+            borderRadius: orbSize,
+            overflow: 'hidden',
+          },
+          auraAnimatedStyle,
+        ]}
+      >
         <LinearGradient
           colors={[
             'rgba(139, 92, 246, 0.18)',
@@ -175,12 +196,23 @@ export const Orb: React.FC<OrbProps> = ({
           ]}
           start={{ x: 0.5, y: 0.5 }}
           end={{ x: 0.5, y: 0 }}
-          style={styles.gradFill}
+          style={[styles.gradFill, { borderRadius: orbSize }]}
         />
       </Animated.View>
 
-      {/* Inner aura — slightly tighter, warmer tint */}
-      <Animated.View style={[styles.auraInner, auraAnimatedStyle]}>
+      {/* Inner aura */}
+      <Animated.View
+        style={[
+          {
+            position: 'absolute',
+            width: orbSize * 1.1,
+            height: orbSize * 1.1,
+            borderRadius: orbSize,
+            overflow: 'hidden',
+          },
+          auraAnimatedStyle,
+        ]}
+      >
         <LinearGradient
           colors={[
             'rgba(167, 139, 250, 0.15)',
@@ -189,12 +221,23 @@ export const Orb: React.FC<OrbProps> = ({
           ]}
           start={{ x: 0.5, y: 0.45 }}
           end={{ x: 0.5, y: 0 }}
-          style={styles.gradFill}
+          style={[styles.gradFill, { borderRadius: orbSize }]}
         />
       </Animated.View>
 
-      {/* Glow intensifier — activates on tap */}
-      <Animated.View style={[styles.glowLayer, glowAnimatedStyle]}>
+      {/* Glow intensifier */}
+      <Animated.View
+        style={[
+          {
+            position: 'absolute',
+            width: orbSize * 1.05,
+            height: orbSize * 1.05,
+            borderRadius: orbSize,
+            overflow: 'hidden',
+          },
+          glowAnimatedStyle,
+        ]}
+      >
         <LinearGradient
           colors={[
             'rgba(192, 132, 252, 0.28)',
@@ -203,12 +246,23 @@ export const Orb: React.FC<OrbProps> = ({
           ]}
           start={{ x: 0.5, y: 0.5 }}
           end={{ x: 0.5, y: 0 }}
-          style={styles.gradFill}
+          style={[styles.gradFill, { borderRadius: orbSize }]}
         />
       </Animated.View>
 
       {/* Burst on tap */}
-      <Animated.View style={[styles.burst, burstAnimatedStyle]}>
+      <Animated.View
+        style={[
+          {
+            position: 'absolute',
+            width: orbSize * 0.85,
+            height: orbSize * 0.85,
+            borderRadius: orbSize,
+            overflow: 'hidden',
+          },
+          burstAnimatedStyle,
+        ]}
+      >
         <LinearGradient
           colors={[
             'rgba(196, 132, 252, 0.4)',
@@ -217,19 +271,47 @@ export const Orb: React.FC<OrbProps> = ({
           ]}
           start={{ x: 0.5, y: 0.5 }}
           end={{ x: 0.5, y: 0 }}
-          style={styles.gradFill}
+          style={[styles.gradFill, { borderRadius: orbSize }]}
         />
       </Animated.View>
 
       {/* Crystal ball image */}
-      <Pressable onPress={onPress} disabled={disabled}>
-        <Animated.View style={[styles.imageWrapper, orbAnimatedStyle]}>
-          <Image source={orbImage} style={styles.orbImage} resizeMode="contain" />
+      <Pressable
+        onPress={onPress}
+        disabled={disabled}
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel ?? 'Ask the orb'}
+        accessibilityState={{ disabled }}
+      >
+        <Animated.View
+          style={[
+            { width: orbSize, height: orbSize, alignItems: 'center', justifyContent: 'center' },
+            orbAnimatedStyle,
+          ]}
+        >
+          <Image
+            source={orbImage}
+            style={{ width: orbSize, height: orbSize }}
+            resizeMode="contain"
+            accessibilityIgnoresInvertColors
+          />
         </Animated.View>
       </Pressable>
 
-      {/* Floor fog — wide elliptical glow beneath the stand */}
-      <Animated.View style={[styles.floorFog, auraAnimatedStyle]}>
+      {/* Floor fog */}
+      <Animated.View
+        style={[
+          {
+            position: 'absolute',
+            bottom: orbSize * 0.02,
+            width: orbSize * 0.85,
+            height: orbSize * 0.18,
+            borderRadius: orbSize,
+            overflow: 'hidden',
+          },
+          auraAnimatedStyle,
+        ]}
+      >
         <LinearGradient
           colors={[
             'rgba(139, 92, 246, 0.2)',
@@ -246,17 +328,10 @@ export const Orb: React.FC<OrbProps> = ({
   );
 };
 
-const CONTAINER = ORB_SIZE * 1.5;
-
 const styles = StyleSheet.create({
   container: {
-    width: CONTAINER,
-    height: CONTAINER,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  sparkleLayer: {
-    ...StyleSheet.absoluteFillObject,
   },
   mistLayer: {
     ...StyleSheet.absoluteFillObject,
@@ -266,53 +341,6 @@ const styles = StyleSheet.create({
   gradFill: {
     width: '100%',
     height: '100%',
-    borderRadius: ORB_SIZE,
-  },
-  auraOuter: {
-    position: 'absolute',
-    width: ORB_SIZE * 1.35,
-    height: ORB_SIZE * 1.35,
-    borderRadius: ORB_SIZE,
-    overflow: 'hidden',
-  },
-  auraInner: {
-    position: 'absolute',
-    width: ORB_SIZE * 1.1,
-    height: ORB_SIZE * 1.1,
-    borderRadius: ORB_SIZE,
-    overflow: 'hidden',
-  },
-  glowLayer: {
-    position: 'absolute',
-    width: ORB_SIZE * 1.05,
-    height: ORB_SIZE * 1.05,
-    borderRadius: ORB_SIZE,
-    overflow: 'hidden',
-  },
-  burst: {
-    position: 'absolute',
-    width: ORB_SIZE * 0.85,
-    height: ORB_SIZE * 0.85,
-    borderRadius: ORB_SIZE,
-    overflow: 'hidden',
-  },
-  imageWrapper: {
-    width: ORB_SIZE,
-    height: ORB_SIZE,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  orbImage: {
-    width: ORB_SIZE,
-    height: ORB_SIZE,
-  },
-  floorFog: {
-    position: 'absolute',
-    bottom: ORB_SIZE * 0.02,
-    width: ORB_SIZE * 0.85,
-    height: ORB_SIZE * 0.18,
-    borderRadius: ORB_SIZE,
-    overflow: 'hidden',
   },
   floorFogGrad: {
     width: '100%',

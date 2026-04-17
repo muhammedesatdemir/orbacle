@@ -10,6 +10,7 @@ interface PrimaryButtonProps {
   onPress: () => void;
   style?: ViewStyle;
   variant?: 'filled' | 'ghost';
+  accessibilityLabel?: string;
 }
 
 export const PrimaryButton: React.FC<PrimaryButtonProps> = ({
@@ -17,10 +18,18 @@ export const PrimaryButton: React.FC<PrimaryButtonProps> = ({
   onPress,
   style,
   variant = 'ghost',
+  accessibilityLabel,
 }) => {
+  const label = accessibilityLabel ?? title;
+
   if (variant === 'filled') {
     return (
-      <Pressable onPress={onPress} style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1 }, style]}>
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1 }, style]}
+        accessibilityRole="button"
+        accessibilityLabel={label}
+      >
         <LinearGradient
           colors={[colors.primary, colors.primaryDark]}
           start={{ x: 0, y: 0 }}
@@ -37,6 +46,8 @@ export const PrimaryButton: React.FC<PrimaryButtonProps> = ({
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [styles.ghostButton, { opacity: pressed ? 0.7 : 1 }, style]}
+      accessibilityRole="button"
+      accessibilityLabel={label}
     >
       <Text style={styles.ghostText}>{title}</Text>
     </Pressable>

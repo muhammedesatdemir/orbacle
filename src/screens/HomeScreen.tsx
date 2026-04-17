@@ -1,8 +1,9 @@
-import React, { useState, useCallback } from 'react';
-import { StyleSheet, Text, View, Share, Alert, Keyboard, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useState, useCallback, useEffect } from 'react';
+import { StyleSheet, Text, View, Share, Keyboard, KeyboardAvoidingView, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { Orb } from '../components/Orb';
 import { QuestionInput } from '../components/QuestionInput';
 import { AnswerCard } from '../components/AnswerCard';
@@ -22,6 +23,7 @@ export const HomeScreen: React.FC = () => {
   const [question, setQuestion] = useState('');
   const [answer, setAnswer] = useState<string | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [emptyHint, setEmptyHint] = useState(false);
 
   const {
     orbAnimatedStyle,
@@ -32,9 +34,23 @@ export const HomeScreen: React.FC = () => {
     resetAnimation,
   } = useOrbAnimation();
 
+  useEffect(() => {
+    if (!emptyHint) return;
+    const timer = setTimeout(() => setEmptyHint(false), 1800);
+    return () => clearTimeout(timer);
+  }, [emptyHint]);
+
   const handleOrbPress = useCallback(async () => {
     const trimmed = question.trim();
-    if (!trimmed || isAnimating) return;
+    if (!trimmed) {
+      setEmptyHint(true);
+      const hapticsOn = await getHapticsEnabled();
+      if (hapticsOn) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+      }
+      return;
+    }
+    if (isAnimating) return;
 
     Keyboard.dismiss();
     setIsAnimating(true);
@@ -43,7 +59,7 @@ export const HomeScreen: React.FC = () => {
 
     const hapticsOn = await getHapticsEnabled();
     if (hapticsOn) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     }
 
     triggerReveal(async () => {
@@ -52,7 +68,7 @@ export const HomeScreen: React.FC = () => {
       setIsAnimating(false);
 
       if (hapticsOn) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       }
 
       await addHistoryItem({
@@ -63,7 +79,7 @@ export const HomeScreen: React.FC = () => {
         language,
       });
     });
-  }, [question, isAnimating, language]);
+  }, [question, isAnimating, language, triggerReveal, resetAnimation]);
 
   const handleShare = useCallback(async () => {
     if (!answer) return;
@@ -71,7 +87,7 @@ export const HomeScreen: React.FC = () => {
     try {
       await Share.share({ message: shareText });
     } catch {
-      // user cancelled
+      // user cancelled or share unavailable
     }
   }, [answer, t]);
 
@@ -79,45 +95,61 @@ export const HomeScreen: React.FC = () => {
     setAnswer(null);
     setQuestion('');
     resetAnimation();
-  }, []);
+  }, [resetAnimation]);
 
   const hasQuestion = question.trim().length > 0;
 
   return (
     <LinearGradient
       colors={[colors.gradientStart, colors.gradientMid, colors.gradientEnd]}
-      style={[styles.container, { paddingTop: insets.top + spacing.md }]}
+      style={[
+        styles.container,
+        { paddingTop: insets.top + spacing.md, paddingBottom: insets.bottom },
+      ]}
       start={{ x: 0.5, y: 0 }}
       end={{ x: 0.5, y: 1 }}
     >
       <KeyboardAvoidingView
         style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 20}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
-        {/* Title */}
-        <Text style={styles.title}>{t('app_name')}</Text>
-        <Text style={styles.slogan}>{t('slogan')}</Text>
+        <Text style={styles.title} maxFontSizeMultiplier={1.3}>
+          {t('app_name')}
+        </Text>
+        <Text style={styles.slogan} maxFontSizeMultiplier={1.3}>
+          {t('slogan')}
+        </Text>
 
-        {/* Orb — fills available space and centers within it */}
         <View style={styles.orbSection}>
           <Orb
-            disabled={answer ? true : !hasQuestion || isAnimating}
+            disabled={answer ? true : isAnimating}
             onPress={answer ? () => {} : handleOrbPress}
             orbAnimatedStyle={orbAnimatedStyle}
             glowAnimatedStyle={glowAnimatedStyle}
             burstAnimatedStyle={burstAnimatedStyle}
             auraAnimatedStyle={auraAnimatedStyle}
+            accessibilityLabel={t('ask_orb_a11y')}
           />
         </View>
 
-        {/* Bottom section — always at bottom, pushed up by keyboard */}
         <View style={styles.bottomSection}>
           {!answer ? (
             <>
-              <Text style={styles.helperText}>
-                {isAnimating ? '...' : t('ask_prompt')}
-              </Text>
+              {emptyHint ? (
+                <Animated.Text
+                  entering={FadeIn.duration(150)}
+                  exiting={FadeOut.duration(300)}
+                  style={[styles.helperText, styles.warningText]}
+                  maxFontSizeMultiplier={1.4}
+                >
+                  {t('enter_question')}
+                </Animated.Text>
+              ) : (
+                <Text style={styles.helperText} maxFontSizeMultiplier={1.4}>
+                  {isAnimating ? '...' : t('ask_prompt')}
+                </Text>
+              )}
               <QuestionInput
                 value={question}
                 onChangeText={setQuestion}
@@ -129,11 +161,16 @@ export const HomeScreen: React.FC = () => {
             <>
               <AnswerCard label={t('orbacle_says')} answer={answer} />
               <View style={styles.actions}>
-                <PrimaryButton title={t('share')} onPress={handleShare} />
                 <PrimaryButton
-                  title={t('ask_placeholder').split('...')[0] + '...'}
+                  title={t('share')}
+                  onPress={handleShare}
+                  accessibilityLabel={t('share')}
+                />
+                <PrimaryButton
+                  title={t('ask_another')}
                   onPress={handleNewQuestion}
                   variant="ghost"
+                  accessibilityLabel={t('ask_another')}
                 />
               </View>
             </>
@@ -179,6 +216,9 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: spacing.md,
+  },
+  warningText: {
+    color: colors.primaryLight,
   },
   actions: {
     flexDirection: 'row',

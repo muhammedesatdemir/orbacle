@@ -1,14 +1,20 @@
-import React from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
+import * as SplashScreen from 'expo-splash-screen';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { Text, StyleSheet } from 'react-native';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Text, StyleSheet, View } from 'react-native';
 import { I18nProvider, useI18n } from './src/i18n';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { HistoryScreen } from './src/screens/HistoryScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
+import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { colors } from './src/constants/colors';
+
+SplashScreen.preventAutoHideAsync().catch(() => {
+  // Safe to ignore — splash may already be hidden.
+});
 
 const Tab = createBottomTabNavigator();
 
@@ -19,47 +25,82 @@ function TabIcon({ label, focused }: { label: string; focused: boolean }) {
     Settings: '⚙️',
   };
   return (
-    <Text style={[styles.icon, focused && styles.iconFocused]}>
+    <Text
+      style={[styles.icon, focused && styles.iconFocused]}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      allowFontScaling={false}
+    >
       {icons[label] ?? '•'}
     </Text>
   );
 }
 
 function AppNavigator() {
-  const { t } = useI18n();
+  const { t, ready } = useI18n();
+  const insets = useSafeAreaInsets();
+
+  const onLayoutRootView = useCallback(async () => {
+    if (ready) {
+      await SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [ready]);
+
+  useEffect(() => {
+    if (ready) {
+      SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [ready]);
+
+  if (!ready) {
+    // Splash screen still visible; render nothing to avoid black flash.
+    return null;
+  }
 
   return (
-    <Tab.Navigator
-      screenOptions={({ route }) => ({
-        headerShown: false,
-        tabBarStyle: styles.tabBar,
-        tabBarActiveTintColor: colors.primaryLight,
-        tabBarInactiveTintColor: colors.textMuted,
-        tabBarLabelStyle: styles.tabLabel,
-        tabBarIcon: ({ focused }) => <TabIcon label={route.name} focused={focused} />,
-      })}
-    >
-      <Tab.Screen name="Home" component={HomeScreen} options={{ tabBarLabel: t('home') }} />
-      <Tab.Screen name="History" component={HistoryScreen} options={{ tabBarLabel: t('history') }} />
-      <Tab.Screen name="Settings" component={SettingsScreen} options={{ tabBarLabel: t('settings') }} />
-    </Tab.Navigator>
+    <View style={styles.root} onLayout={onLayoutRootView}>
+      <Tab.Navigator
+        screenOptions={({ route }) => ({
+          headerShown: false,
+          tabBarStyle: [
+            styles.tabBar,
+            { height: 56 + insets.bottom, paddingBottom: insets.bottom },
+          ],
+          tabBarActiveTintColor: colors.primaryLight,
+          tabBarInactiveTintColor: colors.textMuted,
+          tabBarLabelStyle: styles.tabLabel,
+          tabBarIcon: ({ focused }) => <TabIcon label={route.name} focused={focused} />,
+          tabBarAccessibilityLabel: t(route.name.toLowerCase()),
+        })}
+      >
+        <Tab.Screen name="Home" component={HomeScreen} options={{ tabBarLabel: t('home') }} />
+        <Tab.Screen name="History" component={HistoryScreen} options={{ tabBarLabel: t('history') }} />
+        <Tab.Screen name="Settings" component={SettingsScreen} options={{ tabBarLabel: t('settings') }} />
+      </Tab.Navigator>
+    </View>
   );
 }
 
 export default function App() {
   return (
-    <SafeAreaProvider>
-      <I18nProvider>
-        <NavigationContainer>
-          <StatusBar style="light" />
-          <AppNavigator />
-        </NavigationContainer>
-      </I18nProvider>
-    </SafeAreaProvider>
+    <ErrorBoundary>
+      <SafeAreaProvider>
+        <I18nProvider>
+          <NavigationContainer>
+            <StatusBar style="light" />
+            <AppNavigator />
+          </NavigationContainer>
+        </I18nProvider>
+      </SafeAreaProvider>
+    </ErrorBoundary>
   );
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
   tabBar: {
     backgroundColor: colors.background,
     borderTopColor: colors.cardBorder,

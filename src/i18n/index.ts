@@ -11,12 +11,14 @@ interface I18nContextValue {
   language: Language;
   t: (key: string) => string;
   setLanguage: (lang: Language) => void;
+  ready: boolean;
 }
 
 const I18nContext = createContext<I18nContextValue>({
   language: 'en',
   t: (key: string) => key,
   setLanguage: () => {},
+  ready: false,
 });
 
 export const useI18n = () => useContext(I18nContext);
@@ -27,15 +29,20 @@ export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     (async () => {
-      const saved = await getSavedLanguage();
-      if (saved) {
-        setLang(saved);
-      } else {
-        const device = getDeviceLanguage();
-        setLang(device);
-        await saveLanguage(device);
+      try {
+        const saved = await getSavedLanguage();
+        if (saved) {
+          setLang(saved);
+        } else {
+          const device = getDeviceLanguage();
+          setLang(device);
+          await saveLanguage(device);
+        }
+      } catch {
+        // Fall back to default 'en' — storage errors must not block app.
+      } finally {
+        setReady(true);
       }
-      setReady(true);
     })();
   }, []);
 
@@ -49,7 +56,9 @@ export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children
     [language],
   );
 
-  if (!ready) return null;
-
-  return React.createElement(I18nContext.Provider, { value: { language, t, setLanguage } }, children);
+  return React.createElement(
+    I18nContext.Provider,
+    { value: { language, t, setLanguage, ready } },
+    children,
+  );
 };

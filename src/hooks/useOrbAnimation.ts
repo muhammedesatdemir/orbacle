@@ -8,7 +8,7 @@ import {
   Easing,
   interpolate,
 } from 'react-native-reanimated';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 export function useOrbAnimation() {
   const idlePulse = useSharedValue(0);
@@ -17,15 +17,35 @@ export function useOrbAnimation() {
   const orbScale = useSharedValue(1);
   const isRevealing = useSharedValue(0);
 
+  const revealTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isMountedRef = useRef(true);
+
   useEffect(() => {
     idlePulse.value = withRepeat(
       withTiming(1, { duration: 3000, easing: Easing.inOut(Easing.sin) }),
       -1,
       true,
     );
+
+    return () => {
+      isMountedRef.current = false;
+      if (revealTimeoutRef.current !== null) {
+        clearTimeout(revealTimeoutRef.current);
+        revealTimeoutRef.current = null;
+      }
+    };
   }, []);
 
+  const clearRevealTimeout = () => {
+    if (revealTimeoutRef.current !== null) {
+      clearTimeout(revealTimeoutRef.current);
+      revealTimeoutRef.current = null;
+    }
+  };
+
   const triggerReveal = (onComplete: () => void) => {
+    clearRevealTimeout();
+
     glowIntensity.value = withSequence(
       withTiming(1, { duration: 400, easing: Easing.out(Easing.cubic) }),
       withTiming(0.6, { duration: 200 }),
@@ -46,16 +66,18 @@ export function useOrbAnimation() {
       withTiming(0, { duration: 300 }),
     );
 
-    isRevealing.value = withDelay(
-      1400,
-      withTiming(1, { duration: 10 }),
-    );
+    isRevealing.value = withDelay(1400, withTiming(1, { duration: 10 }));
 
-    // Callback after animation completes
-    setTimeout(onComplete, 1400);
+    revealTimeoutRef.current = setTimeout(() => {
+      revealTimeoutRef.current = null;
+      if (isMountedRef.current) {
+        onComplete();
+      }
+    }, 1400);
   };
 
   const resetAnimation = () => {
+    clearRevealTimeout();
     isRevealing.value = 0;
     glowIntensity.value = withTiming(0, { duration: 300 });
   };

@@ -5,20 +5,36 @@ const LANGUAGE_KEY = '@orbacle_language';
 const HAPTICS_KEY = '@orbacle_haptics';
 
 export async function getSavedLanguage(): Promise<Language | null> {
-  const val = await AsyncStorage.getItem(LANGUAGE_KEY);
-  if (val === 'tr' || val === 'en') return val;
-  return null;
+  try {
+    const val = await AsyncStorage.getItem(LANGUAGE_KEY);
+    if (val === 'tr' || val === 'en') return val;
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 export async function saveLanguage(language: Language): Promise<void> {
-  await AsyncStorage.setItem(LANGUAGE_KEY, language);
+  try {
+    await AsyncStorage.setItem(LANGUAGE_KEY, language);
+  } catch {
+    // ignore — next launch will re-detect device language
+  }
 }
 
 export async function getHapticsEnabled(): Promise<boolean> {
-  const val = await AsyncStorage.getItem(HAPTICS_KEY);
-  return val !== 'false'; // enabled by default
+  try {
+    const val = await AsyncStorage.getItem(HAPTICS_KEY);
+    return val !== 'false'; // enabled by default
+  } catch {
+    return true;
+  }
 }
 
 export async function saveHapticsEnabled(enabled: boolean): Promise<void> {
-  await AsyncStorage.setItem(HAPTICS_KEY, String(enabled));
+  try {
+    await AsyncStorage.setItem(HAPTICS_KEY, String(enabled));
+  } catch {
+    // ignore
+  }
 }

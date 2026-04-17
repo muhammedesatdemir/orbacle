@@ -33,7 +33,10 @@ export const HistoryScreen: React.FC = () => {
   return (
     <LinearGradient
       colors={[colors.gradientStart, colors.gradientMid, colors.gradientEnd]}
-      style={[styles.container, { paddingTop: insets.top + spacing.md }]}
+      style={[
+        styles.container,
+        { paddingTop: insets.top + spacing.md, paddingBottom: insets.bottom },
+      ]}
     >
       <Text style={styles.title}>{t('history')}</Text>
 

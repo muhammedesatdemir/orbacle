@@ -25,5 +25,7 @@
   "confirm": "Confirm",
   "share_prefix": "I asked Orbacle a question.\n\nOrbacle said:\n\n",
   "enter_question": "Please enter a question first",
+  "ask_another": "Ask another...",
+  "ask_orb_a11y": "Ask the orb",
   "home": "Home"
 }

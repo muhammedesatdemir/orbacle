@@ -35,7 +35,10 @@ export const SettingsScreen: React.FC = () => {
   return (
     <LinearGradient
       colors={[colors.gradientStart, colors.gradientMid, colors.gradientEnd]}
-      style={[styles.container, { paddingTop: insets.top + spacing.md }]}
+      style={[
+        styles.container,
+        { paddingTop: insets.top + spacing.md, paddingBottom: insets.bottom },
+      ]}
     >
       <Text style={styles.title}>{t('settings')}</Text>
 
@@ -59,6 +62,8 @@ export const SettingsScreen: React.FC = () => {
               onValueChange={toggleHaptics}
               trackColor={{ false: colors.surfaceLight, true: colors.primary }}
               thumbColor={colors.text}
+              accessibilityLabel={t('haptics')}
+              accessibilityRole="switch"
             />
           </View>
         </View>
