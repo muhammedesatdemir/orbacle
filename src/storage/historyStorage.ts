@@ -1,8 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { HistoryItem } from '../types/history';
+import { StorageKeys } from './keys';
 
-const HISTORY_KEY = '@orbacle_history';
-const MAX_ITEMS = 20;
+const HISTORY_KEY = StorageKeys.history;
+const MAX_ITEMS = 50;
 
 function isValidItem(x: unknown): x is HistoryItem {
   if (!x || typeof x !== 'object') return false;

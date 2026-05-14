@@ -82,8 +82,10 @@ export const SettingsScreen: React.FC = () => {
           <Text style={styles.sectionTitle}>{t('about')}</Text>
           <Text style={styles.aboutText}>{t('about_text')}</Text>
           <Text style={styles.creditPrimary}>{t('about_credits_primary')}</Text>
+          <Text style={styles.creditDeveloper}>{t('about_credits_developer')}</Text>
           <Text style={styles.creditSecondary}>{t('about_credits_secondary')}</Text>
-          <Text style={styles.version}>{t('version')} 1.0.0</Text>
+          <Text style={styles.entertainmentNotice}>{t('entertainment_notice')}</Text>
+          <Text style={styles.version}>{t('version')} 1.1</Text>
         </View>
       </View>
 
@@ -153,6 +155,15 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginTop: spacing.xl,
   },
+  creditDeveloper: {
+    ...typography.body,
+    fontSize: 13,
+    fontWeight: '500',
+    fontStyle: 'normal',
+    color: 'rgba(255, 255, 255, 0.6)',
+    lineHeight: 18,
+    marginTop: 4,
+  },
   creditSecondary: {
     ...typography.body,
     fontSize: 12,
@@ -162,10 +173,17 @@ const styles = StyleSheet.create({
     lineHeight: 17,
     marginTop: 4,
   },
+  entertainmentNotice: {
+    ...typography.caption,
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.4)',
+    lineHeight: 16,
+    marginTop: spacing.lg,
+  },
   version: {
     ...typography.caption,
     fontSize: 11,
     color: 'rgba(255, 255, 255, 0.3)',
-    marginTop: spacing.lg,
+    marginTop: spacing.md,
   },
 });

@@ -2,7 +2,7 @@
   "expo": {
     "name": "Orbacle",
     "slug": "orbacle",
-    "version": "1.0.0",
+    "version": "1.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -17,7 +17,7 @@
     ],
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.orbacle.app"
+      "bundleIdentifier": "com.demrivo.orbacle"
     },
     "android": {
       "icon": "./assets/android-icon.png",
@@ -25,8 +25,9 @@
         "foregroundImage": "./assets/adaptive-foreground.png",
         "backgroundColor": "#0a0a1a"
       },
-      "package": "com.orbacle.app",
-      "permissions": []
+      "package": "com.demrivo.orbacle",
+      "permissions": [],
+      "softwareKeyboardLayoutMode": "resize"
     },
     "plugins": [
       "expo-asset",

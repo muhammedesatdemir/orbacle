@@ -1,8 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Language } from '../types/language';
+import { StorageKeys } from './keys';
 
-const LANGUAGE_KEY = '@orbacle_language';
-const HAPTICS_KEY = '@orbacle_haptics';
+const LANGUAGE_KEY = StorageKeys.language;
+const HAPTICS_KEY = StorageKeys.haptics;
+const ONBOARDED_KEY = StorageKeys.onboarded;
 
 export async function getSavedLanguage(): Promise<Language | null> {
   try {
@@ -36,5 +38,23 @@ export async function saveHapticsEnabled(enabled: boolean): Promise<void> {
     await AsyncStorage.setItem(HAPTICS_KEY, String(enabled));
   } catch {
     // ignore
+  }
+}
+
+export async function getOnboarded(): Promise<boolean> {
+  try {
+    const val = await AsyncStorage.getItem(ONBOARDED_KEY);
+    return val === 'true';
+  } catch {
+    // On read failure, treat as onboarded — never trap the user in onboarding.
+    return true;
+  }
+}
+
+export async function saveOnboarded(): Promise<void> {
+  try {
+    await AsyncStorage.setItem(ONBOARDED_KEY, 'true');
+  } catch {
+    // ignore — onboarding will show again next launch, acceptable degradation
   }
 }

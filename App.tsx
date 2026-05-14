@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { NavigationContainer } from '@react-navigation/native';
@@ -9,7 +9,9 @@ import { I18nProvider, useI18n } from './src/i18n';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { HistoryScreen } from './src/screens/HistoryScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
+import { OnboardingScreen } from './src/screens/OnboardingScreen';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
+import { getOnboarded, saveOnboarded } from './src/storage/settingsStorage';
 import { colors } from './src/constants/colors';
 
 SplashScreen.preventAutoHideAsync().catch(() => {
@@ -39,22 +41,43 @@ function TabIcon({ label, focused }: { label: string; focused: boolean }) {
 function AppNavigator() {
   const { t, ready } = useI18n();
   const insets = useSafeAreaInsets();
-
-  const onLayoutRootView = useCallback(async () => {
-    if (ready) {
-      await SplashScreen.hideAsync().catch(() => {});
-    }
-  }, [ready]);
+  // null = still loading the flag; true/false = resolved.
+  const [onboarded, setOnboarded] = useState<boolean | null>(null);
 
   useEffect(() => {
-    if (ready) {
+    getOnboarded().then(setOnboarded);
+  }, []);
+
+  const bootReady = ready && onboarded !== null;
+
+  const onLayoutRootView = useCallback(async () => {
+    if (bootReady) {
+      await SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [bootReady]);
+
+  useEffect(() => {
+    if (bootReady) {
       SplashScreen.hideAsync().catch(() => {});
     }
-  }, [ready]);
+  }, [bootReady]);
 
-  if (!ready) {
+  if (!bootReady) {
     // Splash screen still visible; render nothing to avoid black flash.
     return null;
+  }
+
+  if (!onboarded) {
+    return (
+      <View style={styles.root} onLayout={onLayoutRootView}>
+        <OnboardingScreen
+          onDone={() => {
+            setOnboarded(true);
+            saveOnboarded();
+          }}
+        />
+      </View>
+    );
   }
 
   return (
@@ -62,6 +85,7 @@ function AppNavigator() {
       <Tab.Navigator
         screenOptions={({ route }) => ({
           headerShown: false,
+          tabBarHideOnKeyboard: true,
           tabBarStyle: [
             styles.tabBar,
             { height: 56 + insets.bottom, paddingBottom: insets.bottom },
