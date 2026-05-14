@@ -105,11 +105,13 @@ export const HomeScreen: React.FC = () => {
   }, [orbCompact]);
 
   // Orb shrink + lift. translateY (a transform) instead of marginVertical (a
-  // layout prop) so the parent is never re-measured mid-animation.
+  // layout prop) so the parent is never re-measured mid-animation. The lift is
+  // large enough to clear the input once it rises with the keyboard.
+  const ORB_LIFT = spacing.xxl + spacing.xxxl;
   const orbSectionStyle = useAnimatedStyle(() => ({
     transform: [
       { scale: 1 - orbCompact.value * 0.28 },
-      { translateY: -orbCompact.value * spacing.xxl },
+      { translateY: -orbCompact.value * ORB_LIFT },
     ],
   }));
 
