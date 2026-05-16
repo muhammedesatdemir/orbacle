@@ -1,0 +1,30 @@
+# EAS Build sunucusu projeyi sifirdan kuracak — yereldeki build ciktilarini,
+# cache'leri ve makineye ozgu yapilandirmayi gondermek hem upload'i sismekle
+# kalmaz, Linux build sunucusunda Windows path'leriyle catismaya da yol acar.
+
+# Bagimliliklar (EAS yeniden kuruyor)
+node_modules/
+
+# Lokal Gradle build ciktilari ve cache
+android/build/
+android/app/build/
+android/.gradle/
+android/.cxx/
+android/app/.cxx/
+android/captures/
+
+# Makine-ozgu Gradle yapilandirmasi (Windows SDK path'i icerir, Linux'ta yok)
+android/local.properties
+
+# Expo gecici dosyalari
+.expo/
+dist/
+web-build/
+
+# OS / IDE
+.DS_Store
+*.log
+Thumbs.db
+
+# Bizim eklediklerimiz
+PLAN_ANALYSIS.md
