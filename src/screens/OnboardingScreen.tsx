@@ -13,30 +13,29 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useI18n } from '../i18n';
 import { PrimaryButton } from '../components/PrimaryButton';
+import { supportedLanguages } from '../types/language';
 import { colors } from '../constants/colors';
-import { spacing } from '../constants/spacing';
+import { spacing, borderRadius } from '../constants/spacing';
 import { typography } from '../constants/typography';
 
 interface OnboardingScreenProps {
   onDone: () => void;
 }
 
-const PAGE_ICONS = ['✍️', '🔮', '📜'];
+const PAGE_ICONS = ['🌐', '✍️', '🔮', '📜'];
 
 export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onDone }) => {
-  const { t } = useI18n();
+  const { t, language, setLanguage } = useI18n();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const scrollRef = useRef<ScrollView>(null);
   const [page, setPage] = useState(0);
 
-  const pages = [
-    { icon: PAGE_ICONS[0], title: t('onboarding_1_title'), body: t('onboarding_1_body') },
-    { icon: PAGE_ICONS[1], title: t('onboarding_2_title'), body: t('onboarding_2_body') },
-    { icon: PAGE_ICONS[2], title: t('onboarding_3_title'), body: t('onboarding_3_body') },
-  ];
-
-  const isLast = page === pages.length - 1;
+  // Page 0 = language picker; pages 1..3 = the original three onboarding screens.
+  // Titles/bodies for the three content pages are looked up live, so when the
+  // user picks a language on page 0 they instantly see the rest in that language.
+  const totalPages = 4;
+  const isLast = page === totalPages - 1;
 
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const next = Math.round(e.nativeEvent.contentOffset.x / width);
@@ -74,20 +73,55 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onDone }) =>
         showsHorizontalScrollIndicator={false}
         onMomentumScrollEnd={onScroll}
       >
-        {pages.map((p) => (
-          <View key={p.title} style={[styles.page, { width }]}>
+        {/* Page 0 — language picker. Same icon/title/body rhythm as the
+            content pages below, so the layout doesn't jump between pages. */}
+        <View key="lang" style={[styles.page, { width }]}>
+          <Text style={styles.icon} accessibilityElementsHidden>
+            {PAGE_ICONS[0]}
+          </Text>
+          <Text style={styles.title}>{t('language')}</Text>
+          <View style={styles.langGrid}>
+            {supportedLanguages.map((lang) => {
+              const active = lang.code === language;
+              return (
+                <Pressable
+                  key={lang.code}
+                  onPress={() => setLanguage(lang.code)}
+                  style={[styles.langChip, active && styles.langChipActive]}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  accessibilityLabel={lang.nativeName}
+                >
+                  <Text
+                    style={[
+                      styles.langChipText,
+                      active && styles.langChipTextActive,
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {lang.nativeName}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* Pages 1..3 — original onboarding content. */}
+        {[1, 2, 3].map((n) => (
+          <View key={`p${n}`} style={[styles.page, { width }]}>
             <Text style={styles.icon} accessibilityElementsHidden>
-              {p.icon}
+              {PAGE_ICONS[n]}
             </Text>
-            <Text style={styles.title}>{p.title}</Text>
-            <Text style={styles.body}>{p.body}</Text>
+            <Text style={styles.title}>{t(`onboarding_${n}_title`)}</Text>
+            <Text style={styles.body}>{t(`onboarding_${n}_body`)}</Text>
           </View>
         ))}
       </ScrollView>
 
       <View style={styles.dots}>
-        {pages.map((p, i) => (
-          <View key={p.title} style={[styles.dot, i === page && styles.dotActive]} />
+        {Array.from({ length: totalPages }).map((_, i) => (
+          <View key={i} style={[styles.dot, i === page && styles.dotActive]} />
         ))}
       </View>
 
@@ -135,6 +169,38 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.textSecondary,
     textAlign: 'center',
+  },
+  // Language grid: wraps to as many rows as needed, centred. Chips size to
+  // their label, so wide native names ("Bahasa Indonesia", "Português (Brasil)")
+  // don't get squeezed and short ones don't waste space.
+  langGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    marginTop: spacing.sm,
+  },
+  langChip: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    backgroundColor: colors.card,
+    margin: spacing.xs,
+  },
+  langChipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  langChipText: {
+    ...typography.body,
+    fontSize: 14,
+    color: colors.textSecondary,
+    fontWeight: '500',
+  },
+  langChipTextActive: {
+    color: colors.text,
+    fontWeight: '600',
   },
   dots: {
     flexDirection: 'row',

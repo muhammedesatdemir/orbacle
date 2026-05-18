@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FavoriteItem } from '../types/favorite';
+import { isSupportedLanguage } from '../types/language';
 import { StorageKeys } from './keys';
 
 const FAVORITES_KEY = StorageKeys.favorites;
@@ -13,7 +14,7 @@ function isValidItem(x: unknown): x is FavoriteItem {
     typeof o.question === 'string' &&
     typeof o.answer === 'string' &&
     typeof o.timestamp === 'number' &&
-    (o.language === 'en' || o.language === 'tr')
+    isSupportedLanguage(o.language)
   );
 }
 

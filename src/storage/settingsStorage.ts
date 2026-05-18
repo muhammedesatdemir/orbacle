@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Language } from '../types/language';
+import { Language, isSupportedLanguage } from '../types/language';
 import { StorageKeys } from './keys';
 
 const LANGUAGE_KEY = StorageKeys.language;
@@ -9,7 +9,7 @@ const ONBOARDED_KEY = StorageKeys.onboarded;
 export async function getSavedLanguage(): Promise<Language | null> {
   try {
     const val = await AsyncStorage.getItem(LANGUAGE_KEY);
-    if (val === 'tr' || val === 'en') return val;
+    if (isSupportedLanguage(val)) return val;
     return null;
   } catch {
     return null;

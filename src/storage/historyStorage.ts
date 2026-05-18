@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { HistoryItem } from '../types/history';
+import { isSupportedLanguage } from '../types/language';
 import { StorageKeys } from './keys';
 
 const HISTORY_KEY = StorageKeys.history;
@@ -13,7 +14,7 @@ function isValidItem(x: unknown): x is HistoryItem {
     typeof o.question === 'string' &&
     typeof o.answer === 'string' &&
     typeof o.timestamp === 'number' &&
-    (o.language === 'en' || o.language === 'tr')
+    isSupportedLanguage(o.language)
   );
 }
 

@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, Switch } from 'react-native';
+import { StyleSheet, Text, View, Switch, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useI18n } from '../i18n';
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
+import { LanguagePickerSheet } from '../components/LanguagePickerSheet';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { ConfirmModal } from '../components/ConfirmModal';
+import { Language } from '../types/language';
 import { getHapticsEnabled, saveHapticsEnabled } from '../storage/settingsStorage';
 import { clearHistory } from '../storage/historyStorage';
 import { colors } from '../constants/colors';
@@ -17,6 +19,7 @@ export const SettingsScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const [hapticsOn, setHapticsOn] = useState(true);
   const [showClearModal, setShowClearModal] = useState(false);
+  const [showLangPicker, setShowLangPicker] = useState(false);
 
   useEffect(() => {
     getHapticsEnabled().then(setHapticsOn);
@@ -32,6 +35,11 @@ export const SettingsScreen: React.FC = () => {
     clearHistory();
   };
 
+  const handleLangSelect = (lang: Language) => {
+    setLanguage(lang);
+    setShowLangPicker(false);
+  };
+
   return (
     <LinearGradient
       colors={[colors.gradientStart, colors.gradientMid, colors.gradientEnd]}
@@ -42,19 +50,26 @@ export const SettingsScreen: React.FC = () => {
     >
       <Text style={styles.title}>{t('settings')}</Text>
 
-      <View style={styles.content}>
-        {/* Language */}
+      {/* Scrollable so About is always reachable even on short devices or in
+          languages where labels run longer (de-DE, pt-BR). */}
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Language — compact row that opens a modal picker. */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('language')}</Text>
           <LanguageSwitcher
             current={language}
-            onSelect={setLanguage}
-            labels={{ en: t('english'), tr: t('turkish') }}
+            label={t('language')}
+            onPress={() => setShowLangPicker(true)}
           />
         </View>
 
-        {/* Haptics */}
+        {/* Preferences */}
         <View style={styles.section}>
+          <Text style={styles.sectionTitle}>{t('preferences')}</Text>
           <View style={styles.row}>
             <Text style={styles.label}>{t('haptics')}</Text>
             <Switch
@@ -66,10 +81,7 @@ export const SettingsScreen: React.FC = () => {
               accessibilityRole="switch"
             />
           </View>
-        </View>
-
-        {/* Clear History */}
-        <View style={styles.section}>
+          <View style={styles.spacer} />
           <PrimaryButton
             title={t('clear_history')}
             onPress={() => setShowClearModal(true)}
@@ -85,7 +97,15 @@ export const SettingsScreen: React.FC = () => {
           <Text style={styles.entertainmentNotice}>{t('entertainment_notice')}</Text>
           <Text style={styles.version}>{t('version')} 1.1</Text>
         </View>
-      </View>
+      </ScrollView>
+
+      <LanguagePickerSheet
+        visible={showLangPicker}
+        current={language}
+        title={t('language')}
+        onSelect={handleLangSelect}
+        onClose={() => setShowLangPicker(false)}
+      />
 
       <ConfirmModal
         visible={showClearModal}
@@ -110,8 +130,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: spacing.xl,
   },
+  scroll: {
+    flex: 1,
+  },
   content: {
     paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xxxl,
   },
   section: {
     marginBottom: spacing.xl,
@@ -133,6 +157,9 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.lg,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
+  },
+  spacer: {
+    height: spacing.md,
   },
   label: {
     ...typography.body,

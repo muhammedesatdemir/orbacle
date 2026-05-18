@@ -1,66 +1,86 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, Text, Pressable, View } from 'react-native';
-import { Language } from '../types/language';
+import { Language, supportedLanguages } from '../types/language';
 import { colors } from '../constants/colors';
 import { spacing, borderRadius } from '../constants/spacing';
 import { typography } from '../constants/typography';
 
 interface LanguageSwitcherProps {
   current: Language;
-  onSelect: (lang: Language) => void;
-  labels: { en: string; tr: string };
+  label: string;
+  onPress: () => void;
 }
 
+// Compact one-row card: leading label ("Dil"), trailing native name of the
+// current language, and a chevron. Tapping opens the picker — the actual
+// 10-language list lives in LanguagePickerSheet so it doesn't dominate the
+// Settings screen.
 export const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({
   current,
-  onSelect,
-  labels,
+  label,
+  onPress,
 }) => {
+  const nativeName = useMemo(
+    () =>
+      supportedLanguages.find((l) => l.code === current)?.nativeName ?? current,
+    [current],
+  );
+
   return (
-    <View style={styles.container}>
-      <Pressable
-        style={[styles.option, current === 'en' && styles.active]}
-        onPress={() => onSelect('en')}
-      >
-        <Text style={[styles.text, current === 'en' && styles.activeText]}>
-          {labels.en}
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+      accessibilityRole="button"
+      accessibilityLabel={`${label}: ${nativeName}`}
+    >
+      <Text style={styles.label}>{label}</Text>
+      <View style={styles.trailing}>
+        <Text style={styles.value} numberOfLines={1}>
+          {nativeName}
         </Text>
-      </Pressable>
-      <Pressable
-        style={[styles.option, current === 'tr' && styles.active]}
-        onPress={() => onSelect('tr')}
-      >
-        <Text style={[styles.text, current === 'tr' && styles.activeText]}>
-          {labels.tr}
-        </Text>
-      </Pressable>
-    </View>
+        <Text style={styles.chevron}>›</Text>
+      </View>
+    </Pressable>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  row: {
     flexDirection: 'row',
-    borderRadius: borderRadius.lg,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-  },
-  option: {
-    flex: 1,
-    paddingVertical: spacing.sm + 4,
+    justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    borderRadius: borderRadius.lg,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
   },
-  active: {
-    backgroundColor: colors.primary,
+  pressed: {
+    opacity: 0.7,
   },
-  text: {
+  label: {
+    ...typography.body,
+    color: colors.text,
+    marginRight: spacing.md,
+  },
+  trailing: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexShrink: 1,
+  },
+  value: {
     ...typography.body,
     color: colors.textSecondary,
     fontWeight: '500',
+    flexShrink: 1,
+    textAlign: 'right',
   },
-  activeText: {
-    color: colors.text,
+  chevron: {
+    ...typography.body,
+    fontSize: 22,
+    lineHeight: 22,
+    color: colors.textMuted,
+    marginLeft: spacing.sm,
   },
 });

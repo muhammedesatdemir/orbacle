@@ -1,17 +1,41 @@
-import { Language } from '../types/language';
-import answersEn from '../data/answers.en.json';
+import { Language, FALLBACK_LANGUAGE } from '../types/language';
 import answersTr from '../data/answers.tr.json';
+import answersEn from '../data/answers.en.json';
+import answersEsLA from '../data/answers.es-LA.json';
+import answersPtBR from '../data/answers.pt-BR.json';
+import answersHiIN from '../data/answers.hi-IN.json';
+import answersIdID from '../data/answers.id-ID.json';
+import answersAr from '../data/answers.ar.json';
+import answersDeDE from '../data/answers.de-DE.json';
+import answersFrFR from '../data/answers.fr-FR.json';
+import answersJaJP from '../data/answers.ja-JP.json';
 
 const answersMap: Record<Language, string[]> = {
-  en: answersEn,
   tr: answersTr,
+  en: answersEn,
+  'es-LA': answersEsLA,
+  'pt-BR': answersPtBR,
+  'hi-IN': answersHiIN,
+  'id-ID': answersIdID,
+  ar: answersAr,
+  'de-DE': answersDeDE,
+  'fr-FR': answersFrFR,
+  'ja-JP': answersJaJP,
 };
+
+// If a language's pool is empty or missing for any reason, fall back to English
+// rather than returning '...' and breaking the user experience.
+function poolFor(language: Language): string[] {
+  const pool = answersMap[language];
+  if (pool && pool.length > 0) return pool;
+  return answersMap[FALLBACK_LANGUAGE];
+}
 
 const RECENT_LIMIT = 10;
 let recentAnswers: string[] = [];
 
 export function getRandomAnswer(language: Language): string {
-  const pool = answersMap[language];
+  const pool = poolFor(language);
   if (!pool || pool.length === 0) return '...';
   if (pool.length === 1) return pool[0];
 
@@ -34,7 +58,7 @@ export function getRandomAnswer(language: Language): string {
 // Deterministic answer for a given calendar day: the same date + language
 // always yields the same answer, so "answer of the day" is stable on re-open.
 export function getDeterministicAnswer(language: Language, dateKey: string): string {
-  const pool = answersMap[language];
+  const pool = poolFor(language);
   if (!pool || pool.length === 0) return '...';
 
   let hash = 0;
