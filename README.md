@@ -10,6 +10,8 @@ Orbacle is a minimalist mobile application built with Expo and React Native. The
 
 The application is offline-only: it does not communicate with any server or third-party API. All answers, history, favorites, and preferences are stored on the device. Orbacle is presented strictly as an entertainment app — answers are randomly generated and are not real predictions or advice.
 
+Published under the **Demrivo** brand. Developed by **Muhammed Esat Demir**.
+
 ## Overview
 
 - Single-purpose app: ask a question, reveal an answer.
@@ -53,7 +55,7 @@ Implemented features, grounded in the current source:
   - Language switcher (EN / TR).
   - Haptics toggle (persisted).
   - Clear History action with confirmation modal.
-  - About section with app description, credits, an entertainment-only notice, and version string.
+  - About section with app description, an entertainment-only notice, and version string.
 - **Error boundary** ([src/components/ErrorBoundary.tsx](src/components/ErrorBoundary.tsx)) wrapping the whole app, rendering a fallback "Something went wrong" screen with a reset action.
 - **Splash screen gating**: native splash is held via `expo-splash-screen` until the i18n provider reports `ready` *and* the onboarding flag has resolved, preventing a pre-translation flash.
 - **Safe-area-aware layouts**: every screen respects `useSafeAreaInsets`; bottom tab bar height is extended by the bottom inset.
@@ -178,7 +180,7 @@ eas build --profile production
 Configuration is expressed entirely through declarative files; there is no runtime `.env` usage in the source tree.
 
 - [app.json](app.json):
-  - `name: "Orbacle"`, `slug: "orbacle"`, `version: "1.1"`.
+  - `name: "Orbacle"`, `slug: "orbacle"`, `version: "1.1.0"`.
   - `orientation: portrait`, `userInterfaceStyle: dark`, `jsEngine: hermes`.
   - Splash: `./assets/splash.png`, `resizeMode: contain`, background `#0a0a1a`.
   - Android: package `com.demrivo.orbacle`, adaptive icon foreground `./assets/adaptive-foreground.png`, adaptive background `#0a0a1a`, `permissions: []`, `softwareKeyboardLayoutMode: resize`.
@@ -227,7 +229,7 @@ ErrorBoundary
   - Persists each revealed answer to history via `addHistoryItem`; the same answer can be starred via `toggleFavorite`.
   - Shrinks/lifts the orb section while the keyboard is open via a Reanimated shared value driven by keyboard events.
 - **HistoryScreen** ([src/screens/HistoryScreen.tsx](src/screens/HistoryScreen.tsx)): re-reads history and favorites on focus (via `useFocusEffect`), renders a `FlatList` with an All/Favorites filter and a per-row star toggle, plus an empty-state view (distinct copy for the empty-history vs. empty-favorites case).
-- **SettingsScreen** ([src/screens/SettingsScreen.tsx](src/screens/SettingsScreen.tsx)): language switcher, haptics switch, clear-history button with `ConfirmModal`, and a static about/credits/entertainment-notice/version block.
+- **SettingsScreen** ([src/screens/SettingsScreen.tsx](src/screens/SettingsScreen.tsx)): language switcher, haptics switch, clear-history button with `ConfirmModal`, and a static about/entertainment-notice/version block.
 - **Orb** ([src/components/Orb.tsx](src/components/Orb.tsx)): composes drifting `Mist` layers, staggered `Sparkle` dots, concentric aura layers, a glow intensifier, a tap burst layer, a floor-fog ellipse, and a central `Image` (`assets/orb.webp`) wrapped in an accessible `Pressable`.
 - **useOrbAnimation** ([src/hooks/useOrbAnimation.ts](src/hooks/useOrbAnimation.ts)):
   - Reanimated shared values for idle pulse, glow, burst, orb scale, and reveal state.

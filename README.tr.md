@@ -10,6 +10,8 @@ Orbacle, Expo ve React Native ile geliştirilmiş minimalist bir mobil uygulamad
 
 Uygulama tamamen çevrimdışıdır: herhangi bir sunucuyla veya üçüncü taraf API ile iletişim kurmaz. Tüm cevaplar, geçmiş kayıtları, favoriler ve tercihler cihaz üzerinde saklanır. Orbacle yalnızca bir eğlence uygulaması olarak sunulur — cevaplar rastgele üretilir, gerçek bir öngörü veya tavsiye değildir.
 
+**Demrivo** markası altında yayımlanmıştır. Geliştirici: **Muhammed Esat Demir**.
+
 ## Genel Bakış
 
 - Tek amaçlı uygulama: soru sor, cevabı göster.
@@ -53,7 +55,7 @@ Mevcut koddan doğrulanan, uygulanmış özellikler:
   - Dil seçici (EN / TR).
   - Titreşim anahtarı (saklanır).
   - Onay modallı "Geçmişi Temizle" eylemi.
-  - Uygulama açıklaması, katkı bilgileri, "yalnızca eğlence amaçlıdır" notu ve sürüm dizgesinin yer aldığı "Hakkında" bölümü.
+  - Uygulama açıklaması, "yalnızca eğlence amaçlıdır" notu ve sürüm dizgesinin yer aldığı "Hakkında" bölümü.
 - **Hata sınırı** ([src/components/ErrorBoundary.tsx](src/components/ErrorBoundary.tsx)): tüm uygulamayı sarar ve yakalanan bir render hatası durumunda sıfırlama eylemi içeren bir "Something went wrong" ekranı gösterir.
 - **Splash gecikmesi**: native splash, i18n sağlayıcısı `ready` durumuna geçene *ve* onboarding bayrağı çözülene kadar `expo-splash-screen` ile tutulur; böylece çeviri öncesi bir yanıp sönme önlenir.
 - **Güvenli alan duyarlı düzen**: her ekran `useSafeAreaInsets` değerlerini dikkate alır; alt sekme çubuğu yüksekliği alt güvenli alan değeri kadar uzatılır.
@@ -178,7 +180,7 @@ eas build --profile production
 Yapılandırma tamamen beyanname dosyaları üzerinden ifade edilir; kaynak ağacında çalışma zamanı `.env` kullanımı yoktur.
 
 - [app.json](app.json):
-  - `name: "Orbacle"`, `slug: "orbacle"`, `version: "1.1"`.
+  - `name: "Orbacle"`, `slug: "orbacle"`, `version: "1.1.0"`.
   - `orientation: portrait`, `userInterfaceStyle: dark`, `jsEngine: hermes`.
   - Splash: `./assets/splash.png`, `resizeMode: contain`, arka plan `#0a0a1a`.
   - Android: paket `com.demrivo.orbacle`, adaptive icon ön planı `./assets/adaptive-foreground.png`, adaptive arka plan `#0a0a1a`, `permissions: []`, `softwareKeyboardLayoutMode: resize`.
@@ -227,7 +229,7 @@ ErrorBoundary
   - Açığa çıkan her cevabı `addHistoryItem` ile geçmişe yazar; aynı cevap `toggleFavorite` ile yıldızlanabilir.
   - Klavye açıkken küre bölümünü, klavye olaylarıyla sürülen bir Reanimated shared value aracılığıyla küçültüp yukarı kaydırır.
 - **HistoryScreen** ([src/screens/HistoryScreen.tsx](src/screens/HistoryScreen.tsx)): odaklanıldığında (`useFocusEffect` ile) geçmişi ve favorileri paralel olarak tekrar okur; Tümü/Favoriler filtreli ve satır başına yıldız düğmeli bir `FlatList` render eder; ayrıca bir boş durum görünümü gösterir (boş-geçmiş ile boş-favoriler durumu için ayrı metinler).
-- **SettingsScreen** ([src/screens/SettingsScreen.tsx](src/screens/SettingsScreen.tsx)): dil seçici, titreşim anahtarı, `ConfirmModal`'lı geçmişi temizle düğmesi ve statik hakkında/katkı/eğlence-notu/sürüm bloğu.
+- **SettingsScreen** ([src/screens/SettingsScreen.tsx](src/screens/SettingsScreen.tsx)): dil seçici, titreşim anahtarı, `ConfirmModal`'lı geçmişi temizle düğmesi ve statik hakkında/eğlence-notu/sürüm bloğu.
 - **Orb** ([src/components/Orb.tsx](src/components/Orb.tsx)): sürüklenen `Mist` katmanları, kademeli `Sparkle` noktaları, eş merkezli aura katmanları, bir parıltı güçlendirici, bir dokunma patlaması katmanı, bir zemin sisi elipsi ve erişilebilir bir `Pressable` içine sarılmış merkezi bir `Image`'i (`assets/orb.webp`) birleştirir.
 - **useOrbAnimation** ([src/hooks/useOrbAnimation.ts](src/hooks/useOrbAnimation.ts)):
   - Idle nabız, parıltı, patlama, küre ölçeği ve açılış durumu için Reanimated shared value'ları.
