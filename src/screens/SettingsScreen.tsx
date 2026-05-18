@@ -95,7 +95,7 @@ export const SettingsScreen: React.FC = () => {
           <Text style={styles.aboutText}>{t('about_text')}</Text>
           <Text style={styles.creditPrimary}>{t('about_credits_primary')}</Text>
           <Text style={styles.entertainmentNotice}>{t('entertainment_notice')}</Text>
-          <Text style={styles.version}>{t('version')} 1.1</Text>
+          <Text style={styles.version}>{t('version')} 1.2</Text>
         </View>
       </ScrollView>
 
