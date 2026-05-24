@@ -1,0 +1,21 @@
+{
+  "freeKahinDailyLimit": 1,
+  "rewardedKahinDailyMax": 2,
+  "premiumKahinDailyLimit": 30,
+  "premiumDeepDailyLimit": 3,
+  "deepTrialLifetime": 1,
+  "kahinMaxTokens": 220,
+  "deepMaxTokens": 700,
+  "questionMaxChars": 200,
+  "whisperMaxChars": 120,
+  "activePromptVersions": {
+    "kahin": "prompt_kahin_v1",
+    "deep": "prompt_deep_v1"
+  },
+  "useMockLLM": true,
+  "featureFlags": {
+    "deep_enabled": true,
+    "rewarded_ads_enabled": false,
+    "maintenance_mode": false
+  }
+}

@@ -28,3 +28,6 @@ Thumbs.db
 
 # Bizim eklediklerimiz
 PLAN_ANALYSIS.md
+
+# Backend ayri bir Cloudflare Workers projesi — mobil EAS build'e dahil degil
+orbacle-backend/

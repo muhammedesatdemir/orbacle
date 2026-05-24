@@ -1,0 +1,9 @@
+# Copy to `.dev.vars` for local `wrangler dev`. NEVER commit `.dev.vars`.
+# Phase 3 does not need any of these (mock LLM, no payments). Listed so the
+# wiring is ready for later phases.
+
+# Phase 4 — real LLM. Leave empty in Phase 3.
+OPENAI_API_KEY=
+
+# Phase 6 — RevenueCat webhook signature check. Leave empty in Phase 3.
+REVENUECAT_WEBHOOK_SECRET=

@@ -1,0 +1,25 @@
+{
+  "name": "orbacle-backend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Cloudflare Workers backend for Orbacle (Kâhin Yorumu / Derin Kehanet). Phase 3: scaffold + contract + mock readings. No real LLM, no payments.",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:migrate:local": "wrangler d1 migrations apply orbacle --local",
+    "db:migrate:remote": "wrangler d1 migrations apply orbacle --remote"
+  },
+  "dependencies": {
+    "hono": "^4.6.14"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241127.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.8",
+    "wrangler": "^3.95.0"
+  }
+}

@@ -1,0 +1,33 @@
+# Orbacle backend — Cloudflare Workers config.
+# Phase 3 scaffold: binding IDs are PLACEHOLDERS. Fill them in after running:
+#   wrangler d1 create orbacle
+#   wrangler kv namespace create CONFIG
+#   wrangler kv namespace create RL
+# Secrets are NEVER stored here. Set them with `wrangler secret put <NAME>`:
+#   OPENAI_API_KEY            (Phase 4 — not used yet)
+#   REVENUECAT_WEBHOOK_SECRET (Phase 6 — not used yet)
+
+name = "orbacle-backend"
+main = "src/index.ts"
+compatibility_date = "2025-05-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+ENVIRONMENT = "development"
+SERVICE_VERSION = "v1"
+# Phase 3 runs with a mock LLM; flipped off in Phase 4 once OPENAI_API_KEY exists.
+USE_MOCK_LLM = "true"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "orbacle"
+database_id = "PLACEHOLDER_D1_DATABASE_ID"
+migrations_dir = "migrations"
+
+[[kv_namespaces]]
+binding = "CONFIG"
+id = "PLACEHOLDER_KV_CONFIG_ID"
+
+[[kv_namespaces]]
+binding = "RL"
+id = "PLACEHOLDER_KV_RATELIMIT_ID"
