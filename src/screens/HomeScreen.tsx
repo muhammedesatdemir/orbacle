@@ -36,7 +36,7 @@ import { useEntitlements } from '../entitlements/useEntitlements';
 import { TierKey } from '../entitlements/types';
 import { getWhisper } from '../reading/whisperEngine';
 import { ReadingRequest } from '../reading/types';
-import { requestReading } from '../services/oracleService';
+import { requestOutcome, tierUsesBackend } from '../services/oracleService';
 import type { AnswerCategory } from '../data/whispers/categories';
 import { addHistoryItem } from '../storage/historyStorage';
 import { toggleFavorite } from '../storage/favoritesRepository';
@@ -48,7 +48,7 @@ import { typography } from '../constants/typography';
 
 export const HomeScreen: React.FC = () => {
   const { t, language } = useI18n();
-  const { consume, setPremiumMock } = useEntitlements();
+  const { consume, setPremiumMock, syncFromQuota } = useEntitlements();
   const insets = useSafeAreaInsets();
   const [question, setQuestion] = useState('');
   const [answer, setAnswer] = useState<string | null>(null);
@@ -242,31 +242,44 @@ export const HomeScreen: React.FC = () => {
 
   // Builds the localized placeholder body for a (mock) oracle reading. No text
   // is generated on-device beyond selecting a localized i18n template — there is
-  // no AI here. When the backend lands, this is replaced by the server response.
+  // no AI here. Competition questions get a sport/contest-flavoured placeholder
+  // so the mock/fallback path isn't generic. Used when backend is off or fails.
   const renderPlaceholder = useCallback(
-    (req: ReadingRequest) =>
-      req.tier === 'kahin' ? t('kahin_placeholder_body') : t('deep_placeholder_body'),
+    (req: ReadingRequest) => {
+      const isComp = req.category === 'competition';
+      if (req.tier === 'kahin') {
+        return t(isComp ? 'kahin_placeholder_competition' : 'kahin_placeholder_body');
+      }
+      return t(isComp ? 'deep_placeholder_competition' : 'deep_placeholder_body');
+    },
     [t],
   );
 
-  // Requests a tier reading: checks the (mock) allowance, shows a loading state,
-  // resolves the placeholder, and on failure falls back to the Orb's Whisper
-  // with an atmospheric hint. When out of allowance, opens the placeholder paywall.
+  // Requests a tier reading. Two paths:
+  //  - Backend tier (Phase 4: Kâhin): the server owns quota. We call the backend,
+  //    branch on the outcome (ok / safety / paywall / graceful fallback), and
+  //    mirror the server quota into local state. No local consume here.
+  //  - Mock tier (Deep, or Kâhin when backend off): keep the local mock flow —
+  //    consume the local allowance first, then show the mock reading.
   const requestTier = useCallback(
     async (tier: TierKey) => {
       if (!answer || oracleLoading) return;
-      const result = await consume(tier);
-      if (!result.ok) {
-        // Out of allowance for this tier → offer the placeholder paywall.
-        setPaywallVisible(true);
-        return;
+      const usesBackend = tierUsesBackend(tier);
+
+      // Local-mock path: gate on local entitlement before producing the reading.
+      if (!usesBackend) {
+        const result = await consume(tier);
+        if (!result.ok) {
+          setPaywallVisible(true);
+          return;
+        }
       }
 
       setOracleError(false);
       setOracleLoading(tier);
       const hapticsOn = await getHapticsEnabled();
       try {
-        const reading = await requestReading(
+        const outcome = await requestOutcome(
           {
             tier,
             question: answerQuestion,
@@ -276,20 +289,32 @@ export const HomeScreen: React.FC = () => {
           },
           renderPlaceholder,
         );
-        setOracle({ tier: reading.tier, text: reading.text });
+
+        if (outcome.kind === 'paywall') {
+          // Backend says no quota left → open the placeholder paywall.
+          setPaywallVisible(true);
+          return;
+        }
+
+        // ok / safety / fallback all show a reading in the sheet. For backend
+        // results, sync the authoritative quota into local state.
+        if ('quota' in outcome && outcome.quota) {
+          await syncFromQuota(outcome.quota);
+        }
+        setOracle({ tier: outcome.tier, text: outcome.text });
         setSheetVisible(true);
         if (tier === 'deep') setDeepShown(true);
         if (hapticsOn) {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
         }
       } catch {
-        // Reading failed — surface the atmospheric fallback; the whisper stays.
+        // Unexpected — surface the atmospheric fallback hint; the whisper stays.
         setOracleError(true);
       } finally {
         setOracleLoading(null);
       }
     },
-    [answer, oracleLoading, consume, answerQuestion, category, language, renderPlaceholder],
+    [answer, oracleLoading, consume, syncFromQuota, answerQuestion, category, language, renderPlaceholder],
   );
 
   const handleMockUpgrade = useCallback(async () => {

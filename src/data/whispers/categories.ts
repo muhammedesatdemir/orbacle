@@ -14,6 +14,7 @@ export type AnswerCategory =
   | 'patience'
   | 'warning'
   | 'newBeginning'
+  | 'competition'
   | 'yesNo'
   | 'general';
 
@@ -28,6 +29,7 @@ export const ANSWER_CATEGORIES: readonly AnswerCategory[] = [
   'patience',
   'warning',
   'newBeginning',
+  'competition',
   'yesNo',
   'general',
 ] as const;

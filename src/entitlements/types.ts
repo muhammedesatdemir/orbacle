@@ -61,3 +61,31 @@ export function applyDailyReset(snapshot: EntitlementSnapshot, today: string): E
     deepUsedToday: 0,
   };
 }
+
+// Shape of the backend quota snapshot, mirrored minimally here to keep this file
+// dependency-free (the full type lives in api/contract.ts).
+export interface QuotaLike {
+  premium: boolean;
+  kahin: { used: number };
+  deep: { used: number };
+  deep_pack_balance: number;
+}
+
+// Mirrors a backend quota snapshot onto the local snapshot's counters (backend
+// is the source of truth in Phase 4). `today` is passed in so this stays pure.
+export function applyQuota(
+  prev: EntitlementSnapshot,
+  quota: QuotaLike,
+  today: string,
+): EntitlementSnapshot {
+  return {
+    ...prev,
+    lastResetKey: today,
+    isPremium: quota.premium,
+    kahinUsedToday: quota.kahin.used,
+    // Premium: deep.used is the daily count. Free: it's the lifetime trial use.
+    deepUsedToday: quota.premium ? quota.deep.used : prev.deepUsedToday,
+    deepLifetimeUsed: quota.premium ? prev.deepLifetimeUsed : quota.deep.used,
+    deepPackRemaining: quota.deep_pack_balance,
+  };
+}

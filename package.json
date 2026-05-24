@@ -8,7 +8,7 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
-    "test": "tsc -p tsconfig.test.json && node dist-test/reading/whisperEngine.test.js && node dist-test/entitlements/entitlements.test.js"
+    "test": "tsc -p tsconfig.test.json && node dist-test/reading/whisperEngine.test.js && node dist-test/entitlements/entitlements.test.js && node dist-test/services/backendOutcome.test.js"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

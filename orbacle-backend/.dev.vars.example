@@ -1,9 +1,16 @@
 # Copy to `.dev.vars` for local `wrangler dev`. NEVER commit `.dev.vars`.
-# Phase 3 does not need any of these (mock LLM, no payments). Listed so the
-# wiring is ready for later phases.
+#
+# Phase 4: Kâhin can use the real LLM. Deep is always mock this phase.
+#
+# Local MOCK (default — no key needed):
+#   USE_MOCK_LLM=true
+#
+# Local REAL LLM (Kâhin hits OpenAI):
+#   USE_MOCK_LLM=false
+#   OPENAI_API_KEY=sk-...your-key...
+#
+# If USE_MOCK_LLM=false but OPENAI_API_KEY is empty, the backend returns a
+# controlled UPSTREAM_ERROR and does NOT spend quota.
 
-# Phase 4 — real LLM. Leave empty in Phase 3.
-OPENAI_API_KEY=
-
-# Phase 6 — RevenueCat webhook signature check. Leave empty in Phase 3.
-REVENUECAT_WEBHOOK_SECRET=
+USE_MOCK_LLM=true
+OPENAI_API_KEY=your_key_here

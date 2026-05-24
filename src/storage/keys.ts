@@ -7,4 +7,5 @@ export const StorageKeys = {
   history: '@orbacle_history',
   favorites: '@orbacle_favorites',
   entitlements: '@orbacle_entitlements',
+  installId: '@orbacle_install_id',
 } as const;

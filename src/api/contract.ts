@@ -17,7 +17,7 @@ export type Locale = (typeof LOCALES)[number];
 // --- Answer categories (must match the Phase 1 whisper categories) -----------
 export const ANSWER_CATEGORIES = [
   'love', 'decision', 'career', 'money', 'family', 'daily',
-  'uncertainty', 'patience', 'warning', 'newBeginning', 'yesNo', 'general',
+  'uncertainty', 'patience', 'warning', 'newBeginning', 'competition', 'yesNo', 'general',
 ] as const;
 export type AnswerCategory = (typeof ANSWER_CATEGORIES)[number];
 

@@ -13,7 +13,7 @@ import {
   consume,
   paywallReasonFor,
 } from '../services/entitlementService';
-import { renderPrompt, promptVersionFor } from '../services/promptService';
+import { buildMessages, promptVersionFor } from '../services/promptService';
 import { generateReading } from '../services/llmService';
 import { logReading } from '../services/usageService';
 
@@ -87,16 +87,26 @@ export async function handleReading(c: Ctx, tier: ReadingType): Promise<Response
     });
   }
 
-  // 5) Generate (mock in Phase 3). On failure, quota is NOT spent.
+  // 5) Generate — Kâhin can use the real LLM (Phase 4); Deep stays mock. On any
+  // failure generateReading throws (UPSTREAM_ERROR) and quota is NOT spent.
   const promptVersion = promptVersionFor(tier, cfg.activePromptVersions);
-  const prompt = await renderPrompt(c.env, promptVersion, {
+  const messages = await buildMessages(c.env, promptVersion, {
     question: req.question,
     whisper: req.whisper,
     category,
     locale: req.locale,
   });
   const maxTokens = tier === 'kahin' ? cfg.kahinMaxTokens : cfg.deepMaxTokens;
-  const llm = await generateReading(c.env, cfg, { tier, prompt, locale: req.locale, maxTokens });
+  const model = tier === 'kahin' ? cfg.kahinModel : cfg.deepModel;
+  const llm = await generateReading(c.env, cfg, {
+    tier,
+    messages,
+    locale: req.locale,
+    category,
+    model,
+    maxTokens,
+    temperature: cfg.llmTemperature,
+  });
 
   // 6) Consume quota atomically AFTER a successful reading.
   const after = await consume(c.env, userId, tier, cfg, now);

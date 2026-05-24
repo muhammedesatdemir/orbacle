@@ -1,8 +1,16 @@
 import React, { createContext, useCallback, useEffect, useMemo, useState } from 'react';
 import { todayKey } from '../storage/dailyRepository';
-import { EntitlementSnapshot, DEFAULT_SNAPSHOT, TierAllowance, TierKey, ConsumeResult } from './types';
+import {
+  EntitlementSnapshot,
+  DEFAULT_SNAPSHOT,
+  TierAllowance,
+  TierKey,
+  ConsumeResult,
+  applyQuota,
+} from './types';
 import { getSnapshot, saveSnapshot, applyDailyReset } from './entitlementStorage';
 import { computeAllowances, applyConsume } from './mockEntitlements';
+import type { QuotaSnapshot } from '../api/contract';
 
 interface EntitlementContextValue {
   ready: boolean;
@@ -12,6 +20,9 @@ interface EntitlementContextValue {
   consume: (tier: TierKey) => Promise<ConsumeResult>;
   // Mock-only: flips the local premium flag (placeholder paywall CTA).
   setPremiumMock: (value: boolean) => Promise<void>;
+  // Backend is the source of truth (Phase 4): mirror the server quota snapshot
+  // returned by a reading into local state so the UI counters stay in sync.
+  syncFromQuota: (quota: QuotaSnapshot) => Promise<void>;
   // Re-reads from storage (applies any pending daily reset).
   refresh: () => Promise<void>;
 }
@@ -24,6 +35,7 @@ const EntitlementContext = createContext<EntitlementContextValue>({
   allowances: initialAllowances,
   consume: async () => ({ ok: false, reason: 'limit' }),
   setPremiumMock: async () => {},
+  syncFromQuota: async () => {},
   refresh: async () => {},
 });
 
@@ -69,11 +81,17 @@ export const EntitlementProvider: React.FC<{ children: React.ReactNode }> = ({ c
     await saveSnapshot(next);
   }, [snapshot]);
 
+  const syncFromQuota = useCallback(async (quota: QuotaSnapshot) => {
+    const next = applyQuota(snapshot, quota, todayKey());
+    setSnapshot(next);
+    await saveSnapshot(next);
+  }, [snapshot]);
+
   const allowances = useMemo(() => computeAllowances(snapshot), [snapshot]);
 
   const value = useMemo<EntitlementContextValue>(
-    () => ({ ready, isPremium: snapshot.isPremium, allowances, consume, setPremiumMock, refresh }),
-    [ready, snapshot.isPremium, allowances, consume, setPremiumMock, refresh],
+    () => ({ ready, isPremium: snapshot.isPremium, allowances, consume, setPremiumMock, syncFromQuota, refresh }),
+    [ready, snapshot.isPremium, allowances, consume, setPremiumMock, syncFromQuota, refresh],
   );
 
   return React.createElement(EntitlementContext.Provider, { value }, children);

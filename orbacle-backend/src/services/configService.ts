@@ -11,6 +11,10 @@ export interface AppConfig {
   deepTrialLifetime: number;
   kahinMaxTokens: number;
   deepMaxTokens: number;
+  // Single source of truth for model names. Overridable via KV config.
+  kahinModel: string;
+  deepModel: string;
+  llmTemperature: number;
   questionMaxChars: number;
   whisperMaxChars: number;
   activePromptVersions: { kahin: string; deep: string };
@@ -32,6 +36,9 @@ export const DEFAULT_CONFIG: AppConfig = {
   deepTrialLifetime: 1,
   kahinMaxTokens: 220,
   deepMaxTokens: 700,
+  kahinModel: 'gpt-4o-mini',
+  deepModel: 'gpt-4o-mini',
+  llmTemperature: 0.8,
   questionMaxChars: 200,
   whisperMaxChars: 120,
   activePromptVersions: { kahin: 'prompt_kahin_v1', deep: 'prompt_deep_v1' },
@@ -66,6 +73,7 @@ function mergeConfig(partial: unknown): AppConfig {
   if (typeof partial !== 'object' || partial === null) return DEFAULT_CONFIG;
   const p = partial as Record<string, unknown>;
   const num = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
+  const str = (v: unknown, d: string) => (typeof v === 'string' && v ? v : d);
   const pv = (p.activePromptVersions ?? {}) as Record<string, unknown>;
   const ff = (p.featureFlags ?? {}) as Record<string, unknown>;
   const bool = (v: unknown, d: boolean) => (typeof v === 'boolean' ? v : d);
@@ -77,6 +85,9 @@ function mergeConfig(partial: unknown): AppConfig {
     deepTrialLifetime: num(p.deepTrialLifetime, DEFAULT_CONFIG.deepTrialLifetime),
     kahinMaxTokens: num(p.kahinMaxTokens, DEFAULT_CONFIG.kahinMaxTokens),
     deepMaxTokens: num(p.deepMaxTokens, DEFAULT_CONFIG.deepMaxTokens),
+    kahinModel: str(p.kahinModel, DEFAULT_CONFIG.kahinModel),
+    deepModel: str(p.deepModel, DEFAULT_CONFIG.deepModel),
+    llmTemperature: num(p.llmTemperature, DEFAULT_CONFIG.llmTemperature),
     questionMaxChars: num(p.questionMaxChars, DEFAULT_CONFIG.questionMaxChars),
     whisperMaxChars: num(p.whisperMaxChars, DEFAULT_CONFIG.whisperMaxChars),
     activePromptVersions: {

@@ -1,14 +1,28 @@
-// App-level service config. Phase 3: scaffolding only — the app does not call
-// the backend yet (oracleService runs the local mock). Phase 4 will read the
-// real base URL (e.g. from app.json `extra`) and flip oracleService off mock.
+import { Platform } from 'react-native';
 
-// Placeholder base URL. Replace with the deployed Worker URL in Phase 4
-// (e.g. https://orbacle-backend.<account>.workers.dev). Kept here so there is a
-// single source of truth when wiring goes live.
-export const API_BASE_URL = '';
+// App-level service config.
+//
+// Phase 4: Kâhin is wired to the backend; Deep stays mock. The API key lives
+// ONLY on the backend (a Wrangler secret) — never here.
 
-// Network timeout for backend calls (Phase 4).
+// Local dev base URLs. Android emulator reaches the host via 10.0.2.2; iOS
+// simulator uses localhost. A physical device needs the host's LAN IP instead.
+// Production: replace with the deployed Worker URL.
+const LOCAL_BASE_URL = Platform.OS === 'android' ? 'http://10.0.2.2:8787' : 'http://localhost:8787';
+
+// Single source of truth for the API base. Empty disables backend calls
+// (oracleService then stays on the local mock).
+export const API_BASE_URL = LOCAL_BASE_URL;
+
+// Per-tier backend switches. Phase 4: Kâhin on, Deep off (stays mock).
+export const USE_BACKEND_KAHIN = true;
+export const USE_BACKEND_DEEP = false;
+
+// Network timeout for backend calls.
 export const API_TIMEOUT_MS = 20000;
+
+// App version sent in the X-App-Version header (informational).
+export const APP_VERSION = '1.2';
 
 // Mirror of the backend's v1 paths.
 export const API_PATHS = {

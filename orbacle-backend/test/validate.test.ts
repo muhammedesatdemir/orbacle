@@ -46,6 +46,15 @@ describe('parseReadingRequest', () => {
     }
   });
 
+  it('accepts the competition category', () => {
+    const r = parseReadingRequest(
+      { question: 'Will my team win the cup?', whisper: '', locale: 'en', category: 'competition' },
+      MAXQ,
+      MAXW,
+    );
+    expect(r.category).toBe('competition');
+  });
+
   it('rejects an over-long question', () => {
     const long = 'a'.repeat(MAXQ + 1);
     try {

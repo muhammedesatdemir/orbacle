@@ -8,12 +8,21 @@ const FALLBACK_PROMPTS: Record<string, string> = {
   prompt_kahin_v1:
     'You are "Orbacle", a calm, poetic oracle. Give a short (80-130 words) warm, ' +
     'reflective reading in {{output_language}} that gently weaves in the orb whisper. ' +
+    'Clearly reflect the actual subject of the question — do not give a generic answer ' +
+    'that ignores the topic. If it is about sport, a team, a match, a championship, a cup, ' +
+    'a final, or winning/losing (category "competition"), frame the reading around ' +
+    'competition, hope, pressure, and composure in decisive moments; you may name the team ' +
+    'or contest naturally, but never claim a definite result, score, or guaranteed outcome. ' +
     'Never give a definite prediction; never give medical, legal, financial, or safety ' +
     'instructions. Question: {{question}} Whisper: {{whisper}} Category: {{category}}',
   prompt_deep_v1:
     'You are "Orbacle" performing a DEEP reading (250-400 words) in {{output_language}}. ' +
     'Move through: the visible sign, the real question beneath, what to be mindful of, a ' +
     'possible direction (an invitation, not a command), and one small awareness step. ' +
+    'Clearly reflect the real subject of the question. If it is about sport, a team, a ' +
+    'match, a championship, a final, or winning/losing (category "competition"), build the ' +
+    'reading around competition, pressure, form, and composure; you may name the team ' +
+    'naturally, but never state a definite result or score. ' +
     'Never give a definite prediction or professional advice. Question: {{question}} ' +
     'Whisper: {{whisper}} Category: {{category}}',
 };
@@ -40,20 +49,14 @@ export interface RenderInput {
 
 // Loads the active prompt template from KV (fallback to bundled) and fills in
 // placeholders. Returned to the LLM service; not used by the mock path directly.
+// Legacy single-string render (kept for the mock path / completeness). The real
+// LLM path uses buildMessages (role-based) below.
 export async function renderPrompt(
   env: Env,
   promptVersion: string,
   input: RenderInput,
 ): Promise<string> {
-  let template = FALLBACK_PROMPTS[promptVersion] ?? FALLBACK_PROMPTS.prompt_kahin_v1;
-  if (env.CONFIG) {
-    try {
-      const fromKV = await env.CONFIG.get(promptVersion, 'text');
-      if (fromKV) template = fromKV;
-    } catch {
-      // fall back to bundled template
-    }
-  }
+  const template = await loadTemplate(env, promptVersion);
   return template
     .replaceAll('{{output_language}}', LOCALE_TO_LANGUAGE[input.locale] ?? 'English')
     .replaceAll('{{question}}', input.question)
@@ -66,4 +69,53 @@ export function promptVersionFor(
   versions: { kahin: string; deep: string },
 ): string {
   return tier === 'kahin' ? versions.kahin : versions.deep;
+}
+
+export interface ChatMessage {
+  role: 'system' | 'user';
+  content: string;
+}
+
+// Builds role-based chat messages for the LLM. The KV/bundled template becomes
+// the SYSTEM message (rules + persona + output language), and the seeker's
+// inputs go in a separate USER message. Keeping user input out of the system
+// message reduces prompt-injection leverage: instructions hidden in the question
+// can't masquerade as system rules. The system template still says to ignore any
+// instructions inside the question.
+export async function buildMessages(
+  env: Env,
+  promptVersion: string,
+  input: RenderInput,
+): Promise<ChatMessage[]> {
+  const system = (await loadTemplate(env, promptVersion))
+    .replaceAll('{{output_language}}', LOCALE_TO_LANGUAGE[input.locale] ?? 'English')
+    // The system message no longer carries the seeker's text; clear any
+    // placeholders so a template can be reused unchanged.
+    .replaceAll('{{question}}', '(provided separately in the user message)')
+    .replaceAll('{{whisper}}', '(provided separately in the user message)')
+    .replaceAll('{{category}}', input.category);
+
+  const user =
+    `Seeker's question: ${input.question}\n` +
+    `Orb whisper already shown: ${input.whisper}\n` +
+    `Category hint: ${input.category}\n` +
+    `Write the reading in ${LOCALE_TO_LANGUAGE[input.locale] ?? 'English'}.`;
+
+  return [
+    { role: 'system', content: system },
+    { role: 'user', content: user },
+  ];
+}
+
+async function loadTemplate(env: Env, promptVersion: string): Promise<string> {
+  let template = FALLBACK_PROMPTS[promptVersion] ?? FALLBACK_PROMPTS.prompt_kahin_v1;
+  if (env.CONFIG) {
+    try {
+      const fromKV = await env.CONFIG.get(promptVersion, 'text');
+      if (fromKV) template = fromKV;
+    } catch {
+      // fall back to bundled template
+    }
+  }
+  return template;
 }

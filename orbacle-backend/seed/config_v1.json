@@ -6,6 +6,9 @@
   "deepTrialLifetime": 1,
   "kahinMaxTokens": 220,
   "deepMaxTokens": 700,
+  "kahinModel": "gpt-4o-mini",
+  "deepModel": "gpt-4o-mini",
+  "llmTemperature": 0.8,
   "questionMaxChars": 200,
   "whisperMaxChars": 120,
   "activePromptVersions": {

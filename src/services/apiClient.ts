@@ -1,21 +1,13 @@
 import { API_BASE_URL, API_TIMEOUT_MS } from './config';
 import type { ApiErrorResponse } from '../api/contract';
+import { ApiClientError } from './apiError';
 
-// Thin fetch wrapper for the backend. Phase 3: present but UNUSED — oracleService
-// stays on the local mock (USE_MOCK=true). Phase 4 wires this in once a real
-// API_BASE_URL and an install id exist. No axios; native fetch + AbortController.
+// Thin fetch wrapper for the backend. Phase 4: used by the Kâhin path in
+// oracleService. No axios; native fetch + AbortController. The API key is never
+// here — all LLM work is server-side.
 
-// Thrown on non-2xx responses; carries the parsed ApiErrorResponse when present.
-export class ApiClientError extends Error {
-  readonly status: number;
-  readonly body?: ApiErrorResponse;
-  constructor(status: number, message: string, body?: ApiErrorResponse) {
-    super(message);
-    this.name = 'ApiClientError';
-    this.status = status;
-    this.body = body;
-  }
-}
+// Re-exported for existing importers.
+export { ApiClientError };
 
 export interface ApiClientOptions {
   // The anonymous install id sent as X-Install-Id. Generation lands in Phase 4.

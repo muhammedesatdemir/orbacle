@@ -18,6 +18,7 @@ const CONTENT_CATEGORIES: readonly Exclude<AnswerCategory, 'general' | 'yesNo'>[
   'patience',
   'warning',
   'newBeginning',
+  'competition',
 ];
 
 // Resolve the keyword list for a (category, language) pair, falling back to

@@ -43,6 +43,20 @@ check('en: career keyword → career', () => {
   assert.strictEqual(detectCategory('Will my boss approve the promotion at work?', 'en'), 'career');
 });
 
+// --- detectCategory: competition (sport / contest) -------------------------
+check('tr: Fenerbahçe şampiyon olacak mı? → competition', () => {
+  assert.strictEqual(detectCategory('Fenerbahçe şampiyon olacak mı?', 'tr'), 'competition');
+});
+check('tr: Galatasaray maçı kazanır mı? → competition (beats yesNo)', () => {
+  assert.strictEqual(detectCategory('Galatasaray maçı kazanır mı?', 'tr'), 'competition');
+});
+check('en: Will this team win the championship? → competition', () => {
+  assert.strictEqual(detectCategory('Will this team win the championship?', 'en'), 'competition');
+});
+check('en: cup final question → competition', () => {
+  assert.strictEqual(detectCategory('Who lifts the cup in the final?', 'en'), 'competition');
+});
+
 // --- detectCategory: yes/no phrasing without a topic → yesNo ---------------
 // yesNo is a fallback below content categories: it only wins when no content
 // topic matched, so a bare yes/no question lands here while a topical one does

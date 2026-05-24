@@ -127,6 +127,18 @@ export const categoryKeywords: CategoryKeywords = {
     'fr-FR': ['commencer', 'débuter', 'nouveau', 'changement', 'déménager', 'opportunité', 'aventure'],
     'ja-JP': ['始め', '新し', '変化', '引っ越', 'チャンス', '一歩', '冒険', '初めて'],
   },
+  competition: {
+    tr: ['şampiyon', 'şampiyonluk', 'maç', 'lig', 'kupa', 'final', 'takım', 'kazanır mı', 'kazanacak mı', 'yener mi', 'fenerbahçe', 'galatasaray', 'beşiktaş', 'trabzonspor', 'derbi', 'gol', 'turnuva', 'yarış', 'rakip'],
+    en: ['champion', 'championship', 'match', 'league', 'cup', 'final', 'team', 'will win', 'will lose', 'tournament', 'derby', 'score', 'playoff', 'race', 'rival', 'beat'],
+    'es-LA': ['campeón', 'campeonato', 'partido', 'liga', 'copa', 'final', 'equipo', 'ganar', 'perder', 'torneo', 'clásico', 'gol', 'rival', 'mundial'],
+    'pt-BR': ['campeão', 'campeonato', 'jogo', 'partida', 'liga', 'copa', 'final', 'time', 'ganhar', 'perder', 'torneio', 'clássico', 'gol', 'rival', 'flamengo', 'corinthians'],
+    'hi-IN': ['चैंपियन', 'चैंपियनशिप', 'मैच', 'लीग', 'कप', 'फाइनल', 'टीम', 'जीत', 'हार', 'टूर्नामेंट', 'खेल', 'प्रतिद्वंद्वी'],
+    'id-ID': ['juara', 'kejuaraan', 'pertandingan', 'liga', 'piala', 'final', 'tim', 'menang', 'kalah', 'turnamen', 'gol', 'lawan', 'derbi'],
+    ar: ['بطل', 'بطولة', 'مباراة', 'دوري', 'كأس', 'نهائي', 'فريق', 'يفوز', 'يخسر', 'هدف', 'منافس', 'الكلاسيكو'],
+    'de-DE': ['meister', 'meisterschaft', 'spiel', 'liga', 'pokal', 'finale', 'mannschaft', 'team', 'gewinnen', 'verlieren', 'turnier', 'derby', 'tor', 'bayern'],
+    'fr-FR': ['champion', 'championnat', 'match', 'ligue', 'coupe', 'finale', 'équipe', 'gagner', 'perdre', 'tournoi', 'derby', 'but', 'rival', 'psg'],
+    'ja-JP': ['優勝', 'チャンピオン', '試合', 'リーグ', 'カップ', '決勝', 'チーム', '勝つ', '負ける', '大会', 'トーナメント', 'ゴール', 'ライバル'],
+  },
   yesNo: {
     tr: ['mı', 'mi', 'mu', 'mü', 'olur mu', 'yapmalı mıyım', 'gitmeli miyim', 'doğru mu', 'değil mi'],
     en: ['should i', 'will i', 'is it', 'do i', 'am i', 'can i', 'will it', 'is this'],
