@@ -88,6 +88,13 @@ export interface HealthResponse {
   ok: true;
   service: 'orbacle-backend';
   version: string;
+  // Present only in development. Booleans only — never the key value.
+  debug?: {
+    environment: string;
+    use_mock_llm_raw_present: boolean;
+    use_mock_llm_parsed: boolean;
+    has_openai_key: boolean;
+  };
 }
 
 export interface ConfigResponse {

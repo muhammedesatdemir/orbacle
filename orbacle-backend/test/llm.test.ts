@@ -1,7 +1,12 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import type { Env } from '../src/types/env';
 import { DEFAULT_CONFIG, type AppConfig } from '../src/services/configService';
-import { generateReading, sanitizeOutput, type LlmInput } from '../src/services/llmService';
+import {
+  generateReading,
+  resolveProvider,
+  sanitizeOutput,
+  type LlmInput,
+} from '../src/services/llmService';
 import { ApiError } from '../src/lib/errors';
 import type { ChatMessage } from '../src/services/promptService';
 
@@ -34,6 +39,89 @@ function mockFetchOnce(impl: () => Promise<Response> | Response) {
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
+});
+
+describe('resolveProvider (env overrides config; the original bug)', () => {
+  // DEFAULT_CONFIG.useMockLLM is true. The env var must be able to flip it off.
+  it('Kâhin: USE_MOCK_LLM="false" string + key → openai (config default true is overridden)', () => {
+    const env = { USE_MOCK_LLM: 'false', OPENAI_API_KEY: 'sk-test', ENVIRONMENT: 'development' } as Env;
+    const r = resolveProvider(env, DEFAULT_CONFIG, 'kahin');
+    expect(r.useMock).toBe(false);
+    expect(r.provider).toBe('openai');
+  });
+
+  it('Kâhin: USE_MOCK_LLM="true" + key → mock', () => {
+    const env = { USE_MOCK_LLM: 'true', OPENAI_API_KEY: 'sk-test' } as Env;
+    expect(resolveProvider(env, DEFAULT_CONFIG, 'kahin').provider).toBe('mock');
+  });
+
+  it('Kâhin: USE_MOCK_LLM="0" + key → openai', () => {
+    const env = { USE_MOCK_LLM: '0', OPENAI_API_KEY: 'sk-test' } as Env;
+    expect(resolveProvider(env, DEFAULT_CONFIG, 'kahin').provider).toBe('openai');
+  });
+
+  it('Kâhin: USE_MOCK_LLM="1" + key → mock', () => {
+    const env = { USE_MOCK_LLM: '1', OPENAI_API_KEY: 'sk-test' } as Env;
+    expect(resolveProvider(env, DEFAULT_CONFIG, 'kahin').provider).toBe('mock');
+  });
+
+  it('Kâhin: USE_MOCK_LLM=false boolean + key → openai', () => {
+    const env = { USE_MOCK_LLM: false as unknown as string, OPENAI_API_KEY: 'sk-test' } as Env;
+    expect(resolveProvider(env, DEFAULT_CONFIG, 'kahin').provider).toBe('openai');
+  });
+
+  it('Kâhin: USE_MOCK_LLM="false" but NO key → still openai provider (route returns UPSTREAM_ERROR)', () => {
+    const env = { USE_MOCK_LLM: 'false' } as Env;
+    const r = resolveProvider(env, DEFAULT_CONFIG, 'kahin');
+    expect(r.provider).toBe('openai');
+    expect(r.hasKey).toBe(false);
+  });
+
+  it('Kâhin: env var absent → falls back to config default (mock)', () => {
+    const env = { OPENAI_API_KEY: 'sk-test' } as Env;
+    expect(resolveProvider(env, DEFAULT_CONFIG, 'kahin').provider).toBe('mock');
+  });
+
+  it('Deep: ALWAYS mock regardless of env/key', () => {
+    const env = { USE_MOCK_LLM: 'false', OPENAI_API_KEY: 'sk-test' } as Env;
+    expect(resolveProvider(env, DEFAULT_CONFIG, 'deep').provider).toBe('mock');
+  });
+});
+
+describe('generateReading — env-driven real path (the bug scenario, end to end)', () => {
+  it('USE_MOCK_LLM="false" string + key calls OpenAI even with default config', async () => {
+    const calls = mockFetchOnce(() =>
+      new Response(
+        JSON.stringify({
+          choices: [{ message: { content: 'Mor çorap işareti uğuru çağırıyor.' } }],
+          usage: { prompt_tokens: 10, completion_tokens: 10, total_tokens: 20 },
+        }),
+        { status: 200 },
+      ),
+    );
+    const env = { USE_MOCK_LLM: 'false', OPENAI_API_KEY: 'sk-test' } as Env;
+    const r = await generateReading(env, DEFAULT_CONFIG, kahinInput());
+    expect(calls).toHaveBeenCalledOnce();
+    expect(r.model).toBe('gpt-4o-mini');
+    expect(r.text).toContain('Mor çorap');
+  });
+
+  it('USE_MOCK_LLM="false" string + NO key → UPSTREAM_ERROR (no quota spend), no fetch', async () => {
+    const calls = mockFetchOnce(() => new Response('{}', { status: 200 }));
+    const env = { USE_MOCK_LLM: 'false' } as Env;
+    await expect(generateReading(env, DEFAULT_CONFIG, kahinInput())).rejects.toMatchObject({
+      code: 'UPSTREAM_ERROR',
+    });
+    expect(calls).not.toHaveBeenCalled();
+  });
+
+  it('Deep with USE_MOCK_LLM="false" + key still returns mock (never calls OpenAI)', async () => {
+    const calls = mockFetchOnce(() => new Response('{}', { status: 200 }));
+    const env = { USE_MOCK_LLM: 'false', OPENAI_API_KEY: 'sk-test' } as Env;
+    const r = await generateReading(env, DEFAULT_CONFIG, kahinInput({ tier: 'deep' }));
+    expect(r.model).toBe('mock');
+    expect(calls).not.toHaveBeenCalled();
+  });
 });
 
 describe('generateReading — mock path', () => {
@@ -118,12 +206,31 @@ describe('sanitizeOutput', () => {
     expect(sanitizeOutput('Yapay zeka diyor ki bekle')).not.toMatch(/yapay zeka/i);
   });
 
-  it('clamps very long output', () => {
-    const long = 'word. '.repeat(500);
-    expect(sanitizeOutput(long, 200).length).toBeLessThanOrEqual(200);
+  it('clamps long output to ~maxWords words', () => {
+    // 60 sentences of 4 words each = 240 words; clamp to 120.
+    const long = Array.from({ length: 60 }, (_, i) => `This is sentence ${i}.`).join(' ');
+    const out = sanitizeOutput(long, 120);
+    const words = out.split(/\s+/).filter(Boolean).length;
+    expect(words).toBeLessThanOrEqual(120);
+    expect(words).toBeGreaterThan(80); // not over-trimmed
   });
 
-  it('collapses excessive blank lines', () => {
-    expect(sanitizeOutput('a\n\n\n\n\nb')).toBe('a\n\nb');
+  it('ends a clamped reading on a sentence boundary (no half sentence)', () => {
+    const long = Array.from({ length: 60 }, (_, i) => `Word word word here ${i}.`).join(' ');
+    const out = sanitizeOutput(long, 40);
+    expect(out).toMatch(/[.!?…]$/); // clean ending
+  });
+
+  it('normalizes a multi-paragraph / list answer into one flowing paragraph', () => {
+    const listy = 'The orb shows:\n- first sign\n- second sign\n\n1. a path\n2. a choice';
+    const out = sanitizeOutput(listy);
+    expect(out).not.toMatch(/\n/); // single paragraph
+    expect(out).not.toMatch(/^[-*•]|\b\d+[.)]\s/); // no list markers
+    expect(out).toContain('first sign');
+  });
+
+  it('keeps short readings unchanged (within the word budget)', () => {
+    const short = 'A waiting heart sees clearer. Stay steady and let the moment ripen.';
+    expect(sanitizeOutput(short)).toBe(short);
   });
 });

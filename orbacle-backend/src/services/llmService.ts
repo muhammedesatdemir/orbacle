@@ -3,6 +3,7 @@ import type { ReadingType, Locale, AnswerCategory } from '../types/contract';
 import type { AppConfig } from './configService';
 import type { ChatMessage } from './promptService';
 import { ApiError } from '../lib/errors';
+import { parseEnvBoolean } from '../lib/env';
 
 export interface LlmInput {
   tier: ReadingType;
@@ -22,12 +23,29 @@ export interface LlmResult {
   totalTokens: number;
 }
 
-// Decides whether to use the mock for a given tier. Phase 4: only Kâhin can use
-// the real provider. Deep ALWAYS uses the mock this phase, regardless of config.
-function shouldMock(env: Env, cfg: AppConfig, tier: ReadingType): boolean {
-  if (tier === 'deep') return true;
-  const mockFlag = cfg.useMockLLM || env.USE_MOCK_LLM === 'true';
-  return mockFlag;
+export type LlmProvider = 'mock' | 'openai';
+
+// Resolves the effective USE_MOCK_LLM. The env var (string from .dev.vars /
+// wrangler [vars]) takes precedence over the config default; only when the env
+// var is absent/unrecognized does it fall back to cfg.useMockLLM. This is the
+// fix for the "false" string being treated as truthy.
+export function resolveUseMock(env: Env, cfg: AppConfig): boolean {
+  return parseEnvBoolean(env.USE_MOCK_LLM, cfg.useMockLLM);
+}
+
+// Chooses the provider for a tier. Deep ALWAYS mocks this phase. Kâhin uses the
+// real provider only when mock is off AND a key exists; mock-off without a key
+// is reported separately so the route can return UPSTREAM_ERROR (no quota spend).
+export function resolveProvider(
+  env: Env,
+  cfg: AppConfig,
+  tier: ReadingType,
+): { provider: LlmProvider; useMock: boolean; hasKey: boolean } {
+  const useMock = resolveUseMock(env, cfg);
+  const hasKey = !!env.OPENAI_API_KEY;
+  if (tier === 'deep') return { provider: 'mock', useMock, hasKey };
+  if (useMock) return { provider: 'mock', useMock, hasKey };
+  return { provider: 'openai', useMock, hasKey };
 }
 
 // Adapter boundary for text generation. Kâhin (Phase 4) can hit the real OpenAI
@@ -38,12 +56,21 @@ export async function generateReading(
   cfg: AppConfig,
   input: LlmInput,
 ): Promise<LlmResult> {
-  if (shouldMock(env, cfg, input.tier)) {
+  const { provider, useMock, hasKey } = resolveProvider(env, cfg, input.tier);
+
+  if (env.ENVIRONMENT === 'development') {
+    // Dev-only diagnostics. NEVER logs the key itself — only its presence.
+    console.log(
+      `[llm] tier=${input.tier} provider=${provider} useMockLLM=${useMock} hasOpenAIKey=${hasKey}`,
+    );
+  }
+
+  if (provider === 'mock') {
     return mockGenerate(input);
   }
-  // Real path (Kâhin, useMockLLM=false). Missing key → controlled error so the
-  // route returns UPSTREAM_ERROR WITHOUT spending quota.
-  if (!env.OPENAI_API_KEY) {
+  // Real path (Kâhin, mock off). Missing key → controlled error so the route
+  // returns UPSTREAM_ERROR WITHOUT spending quota.
+  if (!hasKey || !env.OPENAI_API_KEY) {
     throw new ApiError('UPSTREAM_ERROR', { message: 'Reading provider is not configured.' });
   }
   return openAiGenerate(env.OPENAI_API_KEY, input);
@@ -136,15 +163,65 @@ const LEAK_PATTERNS: RegExp[] = [
   /\bdil modeli\b/gi,
 ];
 
-export function sanitizeOutput(raw: string, maxChars = 1200): string {
+// Counts words across scripts: Latin/Cyrillic/etc. words plus each CJK
+// character (which carry no spaces). Good enough for a length guard.
+function countWords(text: string): number {
+  const spaced = text.match(/[^\s一-鿿぀-ヿ]+/g)?.length ?? 0;
+  const cjk = text.match(/[一-鿿぀-ヿ]/g)?.length ?? 0;
+  return spaced + cjk;
+}
+
+// Clamps to at most `maxWords`, ending on a sentence boundary when possible so
+// we never leave a half-sentence. Works for both spaced and CJK text.
+function clampWords(text: string, maxWords: number): string {
+  if (countWords(text) <= maxWords) return text;
+  // Take roughly maxWords worth of content, then back off to the last sentence end.
+  const tokens = text.split(/(\s+)/); // keep separators
+  let out = '';
+  let words = 0;
+  for (const tok of tokens) {
+    const w = countWords(tok);
+    if (words + w > maxWords && words > 0) break;
+    out += tok;
+    words += w;
+  }
+  // Prefer ending at a sentence terminator within what we kept.
+  const lastStop = Math.max(
+    out.lastIndexOf('. '), out.lastIndexOf('。'), out.lastIndexOf('! '),
+    out.lastIndexOf('? '), out.lastIndexOf('！'), out.lastIndexOf('？'),
+    out.lastIndexOf('.\n'),
+  );
+  if (lastStop > 0) {
+    // Include the terminator char itself.
+    out = out.slice(0, lastStop + 1);
+  } else {
+    out = out.trimEnd();
+    // No sentence end found; close gracefully rather than mid-word fragment.
+    if (!/[.!?。！？]$/.test(out)) out += '…';
+  }
+  return out.trim();
+}
+
+// Cleans model output: strips leaked technical wording, normalizes any list /
+// multi-paragraph shape into a single flowing paragraph, then clamps length so a
+// Kâhin reading stays short. `maxWords` is the primary guard (Kâhin target
+// 70-110); `maxChars` is a hard safety ceiling.
+export function sanitizeOutput(raw: string, maxWords = 120, maxChars = 1200): string {
   let text = raw.trim();
   for (const re of LEAK_PATTERNS) text = text.replace(re, '');
-  // Collapse 3+ newlines to a paragraph break.
-  text = text.replace(/\n{3,}/g, '\n\n').trim();
+  // Strip leading list markers (-, *, 1., •) and fold all line breaks into a
+  // single flowing paragraph — Kâhin must be one paragraph, no lists.
+  text = text
+    .replace(/^[\s]*[-*•]\s+/gm, '')
+    .replace(/^[\s]*\d+[.)]\s+/gm, '')
+    .replace(/\s*\n+\s*/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+  // Word clamp first (primary), then a char safety ceiling.
+  text = clampWords(text, maxWords);
   if (text.length > maxChars) {
-    // Clamp at the last sentence end before the limit, else hard clamp.
     const slice = text.slice(0, maxChars);
-    const lastStop = Math.max(slice.lastIndexOf('. '), slice.lastIndexOf('\n'));
+    const lastStop = slice.lastIndexOf('. ');
     text = (lastStop > maxChars * 0.6 ? slice.slice(0, lastStop + 1) : slice).trim();
   }
   return text;
