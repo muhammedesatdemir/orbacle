@@ -7,6 +7,7 @@ import {
   Keyboard,
   Platform,
   TextInput,
+  ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
@@ -24,11 +25,18 @@ import Animated, {
 import { Orb } from '../components/Orb';
 import { QuestionInput } from '../components/QuestionInput';
 import { AnswerCard } from '../components/AnswerCard';
+import { TierActionsBar } from '../components/TierActionsBar';
+import { ReadingResultSheet } from '../components/ReadingResultSheet';
 import { DailyBanner } from '../components/DailyBanner';
 import { PrimaryButton } from '../components/PrimaryButton';
+import { PaywallScreen } from './PaywallScreen';
 import { useOrbAnimation } from '../hooks/useOrbAnimation';
 import { useI18n } from '../i18n';
+import { useEntitlements } from '../entitlements/useEntitlements';
+import { TierKey } from '../entitlements/types';
 import { getWhisper } from '../reading/whisperEngine';
+import { ReadingRequest } from '../reading/types';
+import { requestReading } from '../services/oracleService';
 import type { AnswerCategory } from '../data/whispers/categories';
 import { addHistoryItem } from '../storage/historyStorage';
 import { toggleFavorite } from '../storage/favoritesRepository';
@@ -40,18 +48,35 @@ import { typography } from '../constants/typography';
 
 export const HomeScreen: React.FC = () => {
   const { t, language } = useI18n();
+  const { consume, setPremiumMock } = useEntitlements();
   const insets = useSafeAreaInsets();
   const [question, setQuestion] = useState('');
   const [answer, setAnswer] = useState<string | null>(null);
   // The detected category of the current whisper. Runtime-only — not persisted
-  // to history or favorites. Kept for upcoming layers (Kâhin/Deep) and analytics.
-  const [, setCategory] = useState<AnswerCategory | null>(null);
+  // to history or favorites. Used as context for the Kâhin/Deep readings.
+  const [category, setCategory] = useState<AnswerCategory | null>(null);
   // Tracks the current answer's history entry so it can be favorited.
   const [answerId, setAnswerId] = useState<string | null>(null);
   const [answerQuestion, setAnswerQuestion] = useState('');
   const [isFavorited, setIsFavorited] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
   const [emptyHint, setEmptyHint] = useState(false);
+
+  // --- Layer 2/3 (Kâhin Yorumu / Derin Kehanet) state — mock, no backend. ---
+  // The reading to show in the result sheet. The sheet renders over the scene;
+  // nothing is added inline to the home layout.
+  const [oracle, setOracle] = useState<{ tier: TierKey; text: string } | null>(null);
+  // Result sheet visibility (kept separate from `oracle` so the slide-out
+  // animation can play before the content is cleared).
+  const [sheetVisible, setSheetVisible] = useState(false);
+  // Which tier is loading its (mock) reading right now.
+  const [oracleLoading, setOracleLoading] = useState<TierKey | null>(null);
+  // True after a fetch failed, so we show the atmospheric fallback hint.
+  const [oracleError, setOracleError] = useState(false);
+  // Whether the Deep tier has been shown for the current question.
+  const [deepShown, setDeepShown] = useState(false);
+  // Placeholder paywall visibility.
+  const [paywallVisible, setPaywallVisible] = useState(false);
 
   const inputRef = useRef<TextInput>(null);
 
@@ -152,6 +177,12 @@ export const HomeScreen: React.FC = () => {
     dismissKeyboard();
     setIsAnimating(true);
     setAnswer(null);
+    // Reset any oracle reading from the previous question so the new whisper
+    // starts clean (Kâhin/Deep are re-offered for the new question).
+    setOracle(null);
+    setSheetVisible(false);
+    setOracleError(false);
+    setDeepShown(false);
     resetAnimation();
 
     const hapticsOn = await getHapticsEnabled();
@@ -209,6 +240,74 @@ export const HomeScreen: React.FC = () => {
     }
   }, [answer, t]);
 
+  // Builds the localized placeholder body for a (mock) oracle reading. No text
+  // is generated on-device beyond selecting a localized i18n template — there is
+  // no AI here. When the backend lands, this is replaced by the server response.
+  const renderPlaceholder = useCallback(
+    (req: ReadingRequest) =>
+      req.tier === 'kahin' ? t('kahin_placeholder_body') : t('deep_placeholder_body'),
+    [t],
+  );
+
+  // Requests a tier reading: checks the (mock) allowance, shows a loading state,
+  // resolves the placeholder, and on failure falls back to the Orb's Whisper
+  // with an atmospheric hint. When out of allowance, opens the placeholder paywall.
+  const requestTier = useCallback(
+    async (tier: TierKey) => {
+      if (!answer || oracleLoading) return;
+      const result = await consume(tier);
+      if (!result.ok) {
+        // Out of allowance for this tier → offer the placeholder paywall.
+        setPaywallVisible(true);
+        return;
+      }
+
+      setOracleError(false);
+      setOracleLoading(tier);
+      const hapticsOn = await getHapticsEnabled();
+      try {
+        const reading = await requestReading(
+          {
+            tier,
+            question: answerQuestion,
+            whisper: answer,
+            category: category ?? 'general',
+            language,
+          },
+          renderPlaceholder,
+        );
+        setOracle({ tier: reading.tier, text: reading.text });
+        setSheetVisible(true);
+        if (tier === 'deep') setDeepShown(true);
+        if (hapticsOn) {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+        }
+      } catch {
+        // Reading failed — surface the atmospheric fallback; the whisper stays.
+        setOracleError(true);
+      } finally {
+        setOracleLoading(null);
+      }
+    },
+    [answer, oracleLoading, consume, answerQuestion, category, language, renderPlaceholder],
+  );
+
+  const handleMockUpgrade = useCallback(async () => {
+    await setPremiumMock(true);
+    setPaywallVisible(false);
+  }, [setPremiumMock]);
+
+  // Shares the currently open reading from inside the result sheet.
+  const handleShareReading = useCallback(async () => {
+    if (!oracle) return;
+    const shareText = `${t('share_prefix')}${oracle.text}`;
+    try {
+      await Share.share({ message: shareText });
+    } catch {
+      // user cancelled or share unavailable
+    }
+  }, [oracle, t]);
+
   const handleNewQuestion = useCallback(() => {
     setAnswer(null);
     setCategory(null);
@@ -216,6 +315,10 @@ export const HomeScreen: React.FC = () => {
     setAnswerQuestion('');
     setIsFavorited(false);
     setQuestion('');
+    setOracle(null);
+    setSheetVisible(false);
+    setOracleError(false);
+    setDeepShown(false);
     resetAnimation();
   }, [resetAnimation]);
 
@@ -258,7 +361,9 @@ export const HomeScreen: React.FC = () => {
             />
           </Animated.View>
 
-          <Animated.View style={[styles.bottomSection, bottomSectionStyle]}>
+          <Animated.View
+            style={[styles.bottomSection, answer && styles.bottomSectionRevealed, bottomSectionStyle]}
+          >
             {!answer ? (
               <>
                 <Animated.View style={dailyBannerStyle}>
@@ -287,6 +392,10 @@ export const HomeScreen: React.FC = () => {
                 />
               </>
             ) : (
+              // Revealed state stays compact: the whisper card, a compact tier
+              // action bar, and the home actions. Kâhin/Deep readings open in
+              // ReadingResultSheet (an overlay), never inline — so this block
+              // never collides with the orb on small screens.
               <>
                 <AnswerCard
                   label={t('orbacle_says')}
@@ -295,6 +404,20 @@ export const HomeScreen: React.FC = () => {
                   onToggleFavorite={handleToggleFavorite}
                   favoriteA11yLabel={isFavorited ? t('unfavorite') : t('favorite')}
                 />
+
+                <TierActionsBar
+                  loading={oracleLoading}
+                  onKahin={() => requestTier('kahin')}
+                  onDeep={() => requestTier('deep')}
+                  deepShown={deepShown}
+                />
+
+                {oracleError && (
+                  <Text style={[styles.helperText, styles.fallbackText]} maxFontSizeMultiplier={1.4}>
+                    {t('oracle_fallback_hint')}
+                  </Text>
+                )}
+
                 <View style={styles.actions}>
                   <PrimaryButton
                     title={t('share')}
@@ -312,6 +435,21 @@ export const HomeScreen: React.FC = () => {
             )}
           </Animated.View>
         </View>
+
+        <PaywallScreen
+          visible={paywallVisible}
+          onClose={() => setPaywallVisible(false)}
+          onMockUpgrade={handleMockUpgrade}
+          onRestore={() => setPaywallVisible(false)}
+        />
+
+        <ReadingResultSheet
+          visible={sheetVisible}
+          tier={oracle?.tier ?? null}
+          text={oracle?.text ?? ''}
+          onClose={() => setSheetVisible(false)}
+          onShare={handleShareReading}
+        />
     </LinearGradient>
   );
 };
@@ -349,6 +487,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingBottom: spacing.lg,
   },
+  // When an answer is revealed, let the section shrink within the screen so the
+  // compact whisper + actions never push the orb off the top. Readings open in
+  // an overlay sheet, so nothing tall is added inline.
+  bottomSectionRevealed: {
+    flexShrink: 1,
+    minHeight: 0,
+    width: '100%',
+  },
   helperText: {
     ...typography.caption,
     color: colors.textSecondary,
@@ -357,6 +503,11 @@ const styles = StyleSheet.create({
   },
   warningText: {
     color: colors.primaryLight,
+  },
+  fallbackText: {
+    color: colors.textSecondary,
+    marginTop: spacing.md,
+    paddingHorizontal: spacing.lg,
   },
   actions: {
     flexDirection: 'row',

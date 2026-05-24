@@ -26,9 +26,11 @@ const translations: Record<Language, Record<string, string>> = {
   'ja-JP': jaJP,
 };
 
+type TranslateParams = Record<string, string | number>;
+
 interface I18nContextValue {
   language: Language;
-  t: (key: string) => string;
+  t: (key: string, params?: TranslateParams) => string;
   setLanguage: (lang: Language) => void;
   ready: boolean;
   isRTL: boolean;
@@ -73,8 +75,17 @@ export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const t = useCallback(
-    (key: string) =>
-      translations[language]?.[key] ?? translations[FALLBACK_LANGUAGE][key] ?? key,
+    (key: string, params?: TranslateParams) => {
+      let str = translations[language]?.[key] ?? translations[FALLBACK_LANGUAGE][key] ?? key;
+      if (params) {
+        // Replace every {name} placeholder. replaceAll so a placeholder used
+        // twice in one string is fully substituted; existing keys have none.
+        for (const name of Object.keys(params)) {
+          str = str.replaceAll(`{${name}}`, String(params[name]));
+        }
+      }
+      return str;
+    },
     [language],
   );
 

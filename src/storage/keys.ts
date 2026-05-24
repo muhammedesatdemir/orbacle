@@ -6,4 +6,5 @@ export const StorageKeys = {
   onboarded: '@orbacle_onboarded',
   history: '@orbacle_history',
   favorites: '@orbacle_favorites',
+  entitlements: '@orbacle_entitlements',
 } as const;

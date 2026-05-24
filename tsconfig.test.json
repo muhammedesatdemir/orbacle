@@ -12,6 +12,7 @@
     "rootDir": "src"
   },
   "include": [
-    "src/reading/whisperEngine.test.ts"
+    "src/reading/whisperEngine.test.ts",
+    "src/entitlements/entitlements.test.ts"
   ]
 }

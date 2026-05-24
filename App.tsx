@@ -6,6 +6,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text, StyleSheet, View } from 'react-native';
 import { I18nProvider, useI18n } from './src/i18n';
+import { EntitlementProvider } from './src/entitlements/entitlementProvider';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { HistoryScreen } from './src/screens/HistoryScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
@@ -110,10 +111,12 @@ export default function App() {
     <ErrorBoundary>
       <SafeAreaProvider>
         <I18nProvider>
-          <NavigationContainer>
-            <StatusBar style="light" />
-            <AppNavigator />
-          </NavigationContainer>
+          <EntitlementProvider>
+            <NavigationContainer>
+              <StatusBar style="light" />
+              <AppNavigator />
+            </NavigationContainer>
+          </EntitlementProvider>
         </I18nProvider>
       </SafeAreaProvider>
     </ErrorBoundary>

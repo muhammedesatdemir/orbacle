@@ -2,7 +2,8 @@ import { Language } from '../types/language';
 import { getDeterministicAnswer } from '../utils/getRandomAnswer';
 
 // Local calendar day, not UTC — the "day" should match the user's clock.
-function todayKey(): string {
+// Exported so daily-reset consumers (e.g. entitlements) share one definition.
+export function todayKey(): string {
   const d = new Date();
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
