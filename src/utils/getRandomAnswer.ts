@@ -34,25 +34,36 @@ function poolFor(language: Language): string[] {
 const RECENT_LIMIT = 10;
 let recentAnswers: string[] = [];
 
-export function getRandomAnswer(language: Language): string {
-  const pool = poolFor(language);
-  if (!pool || pool.length === 0) return '...';
+// Picks a random answer from `pool` while avoiding the last few results held in
+// the shared `recent` list (mutated in place, capped at RECENT_LIMIT). Extracted
+// so the categorized whisper engine can reuse the exact same repeat-avoidance
+// behaviour as getRandomAnswer. Safe for any non-empty pool.
+export function pickNonRecent(pool: string[], recent: string[] = recentAnswers): string {
+  if (pool.length === 0) return '...';
   if (pool.length === 1) return pool[0];
 
   // Don't let the recent-history filter exceed the pool size, or the loop never exits.
-  const blockCount = Math.min(recentAnswers.length, pool.length - 1, RECENT_LIMIT);
-  const blocked = recentAnswers.slice(-blockCount);
+  const blockCount = Math.min(recent.length, pool.length - 1, RECENT_LIMIT);
+  const blocked = recent.slice(-blockCount);
 
   let answer: string;
   do {
     answer = pool[Math.floor(Math.random() * pool.length)];
   } while (blocked.includes(answer));
 
-  recentAnswers.push(answer);
-  if (recentAnswers.length > RECENT_LIMIT) {
-    recentAnswers = recentAnswers.slice(-RECENT_LIMIT);
+  recent.push(answer);
+  if (recent.length > RECENT_LIMIT) {
+    // Trim in place so the caller's array (and the module-level default) keeps
+    // its identity rather than being reassigned.
+    recent.splice(0, recent.length - RECENT_LIMIT);
   }
   return answer;
+}
+
+export function getRandomAnswer(language: Language): string {
+  const pool = poolFor(language);
+  if (!pool || pool.length === 0) return '...';
+  return pickNonRecent(pool);
 }
 
 // Deterministic answer for a given calendar day: the same date + language

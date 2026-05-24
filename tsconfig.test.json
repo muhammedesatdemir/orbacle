@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ES2019",
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "outDir": "dist-test",
+    "types": ["node"],
+    "rootDir": "src"
+  },
+  "include": [
+    "src/reading/whisperEngine.test.ts"
+  ]
+}

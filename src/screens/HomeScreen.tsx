@@ -28,7 +28,8 @@ import { DailyBanner } from '../components/DailyBanner';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { useOrbAnimation } from '../hooks/useOrbAnimation';
 import { useI18n } from '../i18n';
-import { getRandomAnswer } from '../utils/getRandomAnswer';
+import { getWhisper } from '../reading/whisperEngine';
+import type { AnswerCategory } from '../data/whispers/categories';
 import { addHistoryItem } from '../storage/historyStorage';
 import { toggleFavorite } from '../storage/favoritesRepository';
 import { getDailyAnswer } from '../storage/dailyRepository';
@@ -42,6 +43,9 @@ export const HomeScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const [question, setQuestion] = useState('');
   const [answer, setAnswer] = useState<string | null>(null);
+  // The detected category of the current whisper. Runtime-only — not persisted
+  // to history or favorites. Kept for upcoming layers (Kâhin/Deep) and analytics.
+  const [, setCategory] = useState<AnswerCategory | null>(null);
   // Tracks the current answer's history entry so it can be favorited.
   const [answerId, setAnswerId] = useState<string | null>(null);
   const [answerQuestion, setAnswerQuestion] = useState('');
@@ -156,9 +160,10 @@ export const HomeScreen: React.FC = () => {
     }
 
     triggerReveal(async () => {
-      const newAnswer = getRandomAnswer(language);
+      const { text: newAnswer, category } = getWhisper(trimmed, language);
       const id = Date.now().toString();
       setAnswer(newAnswer);
+      setCategory(category);
       setAnswerId(id);
       setAnswerQuestion(trimmed);
       setIsFavorited(false);
@@ -206,6 +211,7 @@ export const HomeScreen: React.FC = () => {
 
   const handleNewQuestion = useCallback(() => {
     setAnswer(null);
+    setCategory(null);
     setAnswerId(null);
     setAnswerQuestion('');
     setIsFavorited(false);
