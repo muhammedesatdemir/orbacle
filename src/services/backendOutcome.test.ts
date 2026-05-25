@@ -106,5 +106,19 @@ check('deep pack balance mirrored', () => {
   assert.strictEqual(applyQuota(DEFAULT_SNAPSHOT, quota, TODAY).deepPackRemaining, 9);
 });
 
+// --- Phase 5.1: dev premium grant response → local premium sync -------------
+check('premium grant response (premium + 30/3 limits) syncs to local premium', () => {
+  // Mirrors what /v1/dev/grant-premium returns: premium true, usage preserved.
+  const grantQuota: QuotaLike = {
+    premium: true,
+    kahin: { used: 1 }, // a Kâhin already spent before upgrading → stays 1
+    deep: { used: 0 },
+    deep_pack_balance: 0,
+  };
+  const next = applyQuota(DEFAULT_SNAPSHOT, grantQuota, TODAY);
+  assert.strictEqual(next.isPremium, true);
+  assert.strictEqual(next.kahinUsedToday, 1); // usage preserved (1/30, not 0/30)
+});
+
 // eslint-disable-next-line no-console
 console.log(`\n${passed} backend-outcome checks passed.`);

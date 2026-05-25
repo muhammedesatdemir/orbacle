@@ -1,6 +1,7 @@
-import React from 'react';
-import { StyleSheet, Text, View, Modal, Pressable, ScrollView } from 'react-native';
+import React, { useState } from 'react';
+import { StyleSheet, Text, View, Modal, Pressable, ScrollView, ActivityIndicator } from 'react-native';
 import { PrimaryButton } from '../components/PrimaryButton';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useI18n } from '../i18n';
 import { colors } from '../constants/colors';
 import { spacing, borderRadius } from '../constants/spacing';
@@ -9,9 +10,10 @@ import { typography } from '../constants/typography';
 interface PaywallScreenProps {
   visible: boolean;
   onClose: () => void;
-  // Mock-only: in Phase 2 this flips the local premium flag. Phase 6 swaps it
-  // for the real RevenueCat purchase flow without changing this component's API.
-  onMockUpgrade: () => void;
+  // Placeholder upgrade. Phase 5.1: syncs mock premium with the dev backend when
+  // available, else local mock. Phase 6 swaps it for the real RevenueCat flow
+  // without changing this component's API. May be async.
+  onMockUpgrade: () => void | Promise<void>;
   onRestore: () => void;
 }
 
@@ -25,6 +27,20 @@ export const PaywallScreen: React.FC<PaywallScreenProps> = ({
   onRestore,
 }) => {
   const { t, isRTL } = useI18n();
+  // Loading + double-tap guard for the upgrade button.
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleUpgrade = async () => {
+    if (submitting) return; // ignore repeat taps
+    setSubmitting(true);
+    try {
+      await onMockUpgrade();
+    } finally {
+      // Parent closes the modal on success; clearing here keeps the button
+      // usable if it stayed open (e.g. error), so the user isn't locked out.
+      setSubmitting(false);
+    }
+  };
 
   const benefits = [t('paywall_benefit_1'), t('paywall_benefit_2'), t('paywall_benefit_3')];
 
@@ -51,18 +67,39 @@ export const PaywallScreen: React.FC<PaywallScreenProps> = ({
               ))}
             </View>
 
-            <PrimaryButton
-              title={t('paywall_cta')}
-              onPress={onMockUpgrade}
-              variant="filled"
-              style={styles.cta}
-              accessibilityLabel={t('paywall_cta')}
-            />
+            {submitting ? (
+              <LinearGradient
+                colors={[colors.primary, colors.primaryDark]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[styles.cta, styles.ctaLoading]}
+              >
+                <ActivityIndicator color={colors.text} />
+              </LinearGradient>
+            ) : (
+              <PrimaryButton
+                title={t('paywall_cta')}
+                onPress={handleUpgrade}
+                variant="filled"
+                style={styles.cta}
+                accessibilityLabel={t('paywall_cta')}
+              />
+            )}
 
-            <Pressable onPress={onRestore} style={styles.linkButton} accessibilityRole="button">
+            <Pressable
+              onPress={onRestore}
+              disabled={submitting}
+              style={[styles.linkButton, submitting && styles.disabled]}
+              accessibilityRole="button"
+            >
               <Text style={styles.link}>{t('paywall_restore')}</Text>
             </Pressable>
-            <Pressable onPress={onClose} style={styles.linkButton} accessibilityRole="button">
+            <Pressable
+              onPress={onClose}
+              disabled={submitting}
+              style={[styles.linkButton, submitting && styles.disabled]}
+              accessibilityRole="button"
+            >
               <Text style={styles.linkMuted}>{t('paywall_close')}</Text>
             </Pressable>
 
@@ -129,6 +166,16 @@ const styles = StyleSheet.create({
   cta: {
     width: '100%',
     marginBottom: spacing.md,
+  },
+  // Matches PrimaryButton 'filled' height while showing the spinner.
+  ctaLoading: {
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  disabled: {
+    opacity: 0.5,
   },
   linkButton: {
     paddingVertical: spacing.sm,

@@ -9,6 +9,7 @@ import { kahinRoute } from './routes/kahin';
 import { deepRoute } from './routes/deep';
 import { reportRoute } from './routes/report';
 import { revenuecatWebhookRoute } from './routes/revenuecatWebhook';
+import { devRoute } from './routes/dev';
 
 const app = new Hono<{ Bindings: Env; Variables: RequestVars }>();
 
@@ -23,6 +24,8 @@ app.route('/v1/reading/kahin', kahinRoute);
 app.route('/v1/reading/deep', deepRoute);
 app.route('/v1/report', reportRoute);
 app.route('/v1/revenuecat/webhook', revenuecatWebhookRoute);
+// Development-only (returns 404 unless ENVIRONMENT==='development').
+app.route('/v1/dev', devRoute);
 
 // Root convenience.
 app.get('/', (c) => c.json({ ok: true, service: 'orbacle-backend' }));

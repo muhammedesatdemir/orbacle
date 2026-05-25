@@ -48,7 +48,7 @@ import { typography } from '../constants/typography';
 
 export const HomeScreen: React.FC = () => {
   const { t, language } = useI18n();
-  const { consume, setPremiumMock, syncFromQuota } = useEntitlements();
+  const { consume, grantPremium, syncFromQuota } = useEntitlements();
   const insets = useSafeAreaInsets();
   const [question, setQuestion] = useState('');
   const [answer, setAnswer] = useState<string | null>(null);
@@ -317,10 +317,14 @@ export const HomeScreen: React.FC = () => {
     [answer, oracleLoading, consume, syncFromQuota, answerQuestion, category, language, renderPlaceholder],
   );
 
+  // Phase 5.1: upgrade premium. grantPremium syncs with the backend dev endpoint
+  // when available (so backend quota matches the UI), else falls back to a local
+  // mock. The paywall closes on success either way. Returns so the paywall can
+  // manage its own loading/disabled state and await completion.
   const handleMockUpgrade = useCallback(async () => {
-    await setPremiumMock(true);
+    await grantPremium();
     setPaywallVisible(false);
-  }, [setPremiumMock]);
+  }, [grantPremium]);
 
   // Shares the currently open reading from inside the result sheet.
   const handleShareReading = useCallback(async () => {

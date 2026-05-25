@@ -19,6 +19,13 @@ export const API_BASE_URL = LOCAL_BASE_URL;
 export const USE_BACKEND_KAHIN = true;
 export const USE_BACKEND_DEEP = true;
 
+// Phase 5.1: lets the placeholder "Go Premium" button sync premium with the
+// backend via the dev-only endpoint, so backend quota matches the UI in testing.
+// This is NOT a payment path. SET TO false FOR PRODUCTION BUILDS — the matching
+// backend endpoint is also gated to ENVIRONMENT==='development', so there is no
+// real free-premium hole, but keep this off in prod for clarity.
+export const ENABLE_DEV_PREMIUM_SYNC = true;
+
 // Network timeout for backend calls.
 export const API_TIMEOUT_MS = 20000;
 
@@ -33,4 +40,7 @@ export const API_PATHS = {
   readingKahin: '/v1/reading/kahin',
   readingDeep: '/v1/reading/deep',
   report: '/v1/report',
+  devGrantPremium: '/v1/dev/grant-premium',
+  devRevokePremium: '/v1/dev/revoke-premium',
+  devResetUser: '/v1/dev/reset-user',
 } as const;

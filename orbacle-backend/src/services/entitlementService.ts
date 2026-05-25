@@ -1,6 +1,11 @@
 import type { Env } from '../types/env';
 import type { EntitlementRow, DailyUsageRow } from '../types/db';
-import type { QuotaSnapshot, ReadingType, PaywallReason } from '../types/contract';
+import type {
+  QuotaSnapshot,
+  ReadingType,
+  PaywallReason,
+  EntitlementsResponse,
+} from '../types/contract';
 import type { AppConfig } from './configService';
 import { todayKey, resetsAt } from '../lib/dates';
 import { ApiError } from '../lib/errors';
@@ -236,4 +241,72 @@ function quotaError(tier: ReadingType, state: EffectiveState, cfg: AppConfig): A
     message: 'Additional access is needed for this reading.',
     paywallReason: paywallReasonFor(tier, state, cfg),
   });
+}
+
+// Builds the public EntitlementsResponse from the current state. Shared by the
+// /v1/entitlements route and the dev premium endpoints so the shape stays in sync.
+export function buildEntitlementsResponse(
+  state: EffectiveState,
+  cfg: AppConfig,
+  now: number,
+): EntitlementsResponse {
+  return {
+    ok: true,
+    premium: state.premium,
+    premium_expires_at: state.ent.premium_expires_at,
+    deep_pack_balance: state.ent.deep_pack_balance,
+    first_deep_used: state.ent.first_deep_used > 0,
+    quota: buildQuota(state, cfg, now),
+  };
+}
+
+// --- Dev-only mutations (used by /v1/dev/*; never exposed in production) -------
+
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
+// Grants mock premium for 7 days. Daily usage is intentionally preserved (a
+// user who already spent a Kâhin today still shows 1/30 after upgrading).
+export async function grantPremium(env: Env, userId: string, now: number): Promise<void> {
+  const d = db(env);
+  await d
+    .prepare(
+      `UPDATE entitlements
+         SET premium_active = 1, premium_expires_at = ?2,
+             premium_product = 'dev_mock_premium', updated_at = ?3
+       WHERE user_id = ?1`,
+    )
+    .bind(userId, now + SEVEN_DAYS_MS, now)
+    .run();
+}
+
+export async function revokePremium(env: Env, userId: string, now: number): Promise<void> {
+  const d = db(env);
+  await d
+    .prepare(
+      `UPDATE entitlements
+         SET premium_active = 0, premium_expires_at = NULL,
+             premium_product = NULL, updated_at = ?2
+       WHERE user_id = ?1`,
+    )
+    .bind(userId, now)
+    .run();
+}
+
+// Resets a user back to a clean free state: clears today's usage and the
+// lifetime/premium/pack fields. Test convenience only.
+export async function resetUser(env: Env, userId: string, now: number): Promise<void> {
+  const d = db(env);
+  await d
+    .prepare(`DELETE FROM daily_usage WHERE user_id = ?1`)
+    .bind(userId)
+    .run();
+  await d
+    .prepare(
+      `UPDATE entitlements
+         SET premium_active = 0, premium_expires_at = NULL, premium_product = NULL,
+             first_deep_used = 0, deep_pack_balance = 0, updated_at = ?2
+       WHERE user_id = ?1`,
+    )
+    .bind(userId, now)
+    .run();
 }

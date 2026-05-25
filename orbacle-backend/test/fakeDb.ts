@@ -121,6 +121,51 @@ export function makeFakeD1(tables: Tables): D1Database {
             ent.updated_at = ts;
             changes = 1;
           }
+        } else if (s.includes('UPDATE entitlements') && s.includes('premium_active = 1')) {
+          // grantPremium: SET premium_active=1, premium_expires_at=?2, updated_at=?3
+          const [userId, expiresAt, ts] = args as [string, number, number];
+          const ent = tables.entitlements.get(userId);
+          if (ent) {
+            ent.premium_active = 1;
+            ent.premium_expires_at = expiresAt;
+            ent.premium_product = 'dev_mock_premium';
+            ent.updated_at = ts;
+            changes = 1;
+          }
+        } else if (
+          s.includes('UPDATE entitlements') &&
+          s.includes('premium_active = 0') &&
+          s.includes('first_deep_used = 0')
+        ) {
+          // resetUser entitlements update
+          const [userId, ts] = args as [string, number];
+          const ent = tables.entitlements.get(userId);
+          if (ent) {
+            ent.premium_active = 0;
+            ent.premium_expires_at = null;
+            ent.premium_product = null;
+            ent.first_deep_used = 0;
+            ent.deep_pack_balance = 0;
+            ent.updated_at = ts;
+            changes = 1;
+          }
+        } else if (s.includes('UPDATE entitlements') && s.includes('premium_active = 0')) {
+          // revokePremium
+          const [userId, ts] = args as [string, number];
+          const ent = tables.entitlements.get(userId);
+          if (ent) {
+            ent.premium_active = 0;
+            ent.premium_expires_at = null;
+            ent.premium_product = null;
+            ent.updated_at = ts;
+            changes = 1;
+          }
+        } else if (s.includes('DELETE FROM daily_usage')) {
+          const [userId] = args as [string];
+          for (const key of [...tables.dailyUsage.keys()]) {
+            if (key.startsWith(`${userId}:`)) tables.dailyUsage.delete(key);
+          }
+          changes = 1;
         }
 
         return { meta: { changes } };
