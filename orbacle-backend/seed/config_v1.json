@@ -5,10 +5,11 @@
   "premiumDeepDailyLimit": 3,
   "deepTrialLifetime": 1,
   "kahinMaxTokens": 220,
-  "deepMaxTokens": 700,
+  "deepMaxTokens": 800,
   "kahinModel": "gpt-4o-mini",
   "deepModel": "gpt-4o-mini",
   "llmTemperature": 0.8,
+  "deepTemperature": 0.78,
   "questionMaxChars": 200,
   "whisperMaxChars": 120,
   "activePromptVersions": {

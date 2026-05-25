@@ -74,7 +74,7 @@ export async function requestOutcome(
   renderPlaceholder: (req: ReadingRequest) => string,
 ): Promise<OracleOutcome> {
   if (!tierUsesBackend(req.tier)) {
-    // Local mock path (Deep, or Kâhin when backend disabled). The caller handles
+    // Local mock path (a tier whose backend flag is off). The caller handles
     // local quota consumption for this path.
     const r = await mockReading(req, renderPlaceholder);
     return { kind: 'ok', tier: req.tier, text: r.text };

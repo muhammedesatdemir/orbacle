@@ -13,6 +13,8 @@ export interface LlmInput {
   model: string;
   maxTokens: number;
   temperature: number;
+  // Per-call timeout (ms). Deep readings are longer, so they get more time.
+  timeoutMs?: number;
 }
 
 export interface LlmResult {
@@ -36,21 +38,23 @@ export function resolveUseMock(env: Env, cfg: AppConfig): boolean {
 // Chooses the provider for a tier. Deep ALWAYS mocks this phase. Kâhin uses the
 // real provider only when mock is off AND a key exists; mock-off without a key
 // is reported separately so the route can return UPSTREAM_ERROR (no quota spend).
+// Phase 5: BOTH tiers follow the same rule — mock when USE_MOCK_LLM is on,
+// otherwise the real provider (Kâhin and Deep alike). Deep is no longer pinned
+// to mock. `tier` is kept in the signature for future per-tier routing.
 export function resolveProvider(
   env: Env,
   cfg: AppConfig,
-  tier: ReadingType,
+  _tier: ReadingType,
 ): { provider: LlmProvider; useMock: boolean; hasKey: boolean } {
   const useMock = resolveUseMock(env, cfg);
   const hasKey = !!env.OPENAI_API_KEY;
-  if (tier === 'deep') return { provider: 'mock', useMock, hasKey };
   if (useMock) return { provider: 'mock', useMock, hasKey };
   return { provider: 'openai', useMock, hasKey };
 }
 
-// Adapter boundary for text generation. Kâhin (Phase 4) can hit the real OpenAI
-// API server-side; Deep stays mock. The API key lives only in env (a Wrangler
-// secret) and never leaves the backend.
+// Adapter boundary for text generation. Both Kâhin (Phase 4) and Deep (Phase 5)
+// can hit the real OpenAI API server-side. The API key lives only in env (a
+// Wrangler secret) and never leaves the backend.
 export async function generateReading(
   env: Env,
   cfg: AppConfig,
@@ -90,11 +94,11 @@ interface OpenAiResponse {
   usage?: OpenAiUsage;
 }
 
-const REQUEST_TIMEOUT_MS = 20000;
+const DEFAULT_TIMEOUT_MS = 20000;
 
 async function callOnce(apiKey: string, input: LlmInput): Promise<OpenAiResponse> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), input.timeoutMs ?? DEFAULT_TIMEOUT_MS);
   try {
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -128,7 +132,7 @@ async function openAiGenerate(apiKey: string, input: LlmInput): Promise<LlmResul
     try {
       const data = await callOnce(apiKey, input);
       const raw = data.choices?.[0]?.message?.content ?? '';
-      const text = sanitizeOutput(raw);
+      const text = sanitizeReading(raw, input.tier);
       if (!text) throw new Error('Empty completion');
       return {
         text,
@@ -225,6 +229,35 @@ export function sanitizeOutput(raw: string, maxWords = 120, maxChars = 1200): st
     text = (lastStop > maxChars * 0.6 ? slice.slice(0, lastStop + 1) : slice).trim();
   }
   return text;
+}
+
+// Cleans a Deep reading: strips leaked technical wording and list markers, but
+// PRESERVES paragraph breaks (Deep is multi-paragraph, unlike Kâhin). Clamps to
+// ~maxWords ending on a sentence boundary. Higher word budget than Kâhin.
+export function sanitizeDeepOutput(raw: string, maxWords = 460, maxChars = 4000): string {
+  let text = raw.trim();
+  for (const re of LEAK_PATTERNS) text = text.replace(re, '');
+  // Remove list markers at line starts but keep the lines as paragraphs.
+  text = text
+    .replace(/^[\s]*[-*•]\s+/gm, '')
+    .replace(/^[\s]*\d+[.)]\s+/gm, '')
+    // Collapse 3+ newlines to a single paragraph break; trim trailing spaces.
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+  text = clampWords(text, maxWords);
+  if (text.length > maxChars) {
+    const slice = text.slice(0, maxChars);
+    const lastStop = Math.max(slice.lastIndexOf('. '), slice.lastIndexOf('\n'));
+    text = (lastStop > maxChars * 0.6 ? slice.slice(0, lastStop + 1) : slice).trim();
+  }
+  return text;
+}
+
+// Tier dispatcher used by the real LLM path: Kâhin → one short paragraph;
+// Deep → multi-paragraph, longer.
+export function sanitizeReading(raw: string, tier: ReadingType): string {
+  return tier === 'deep' ? sanitizeDeepOutput(raw) : sanitizeOutput(raw);
 }
 
 // --- Mock path (unchanged from Phase 3) --------------------------------------

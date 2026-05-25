@@ -49,6 +49,18 @@ check('plain network Error → not paywall (fallback)', () => {
   assert.strictEqual(classifyBackendError(new Error('Network request failed')).paywall, false);
 });
 
+check('deep trial exhausted → paywall with free_deep_trial_used reason', () => {
+  const e = new ApiClientError(402, 'x', errBody('NEEDS_PAYWALL', 'free_deep_trial_used'));
+  const r = classifyBackendError(e);
+  assert.strictEqual(r.paywall, true);
+  if (r.paywall) assert.strictEqual(r.reason, 'free_deep_trial_used');
+});
+
+check('deep upstream error → not paywall (graceful fallback, no quota spend)', () => {
+  const e = new ApiClientError(502, 'x', errBody('UPSTREAM_ERROR'));
+  assert.strictEqual(classifyBackendError(e).paywall, false);
+});
+
 check('ApiClientError without body → not paywall (fallback)', () => {
   assert.strictEqual(classifyBackendError(new ApiClientError(0, 'timeout')).paywall, false);
 });

@@ -87,7 +87,7 @@ export async function handleReading(c: Ctx, tier: ReadingType): Promise<Response
     });
   }
 
-  // 5) Generate — Kâhin can use the real LLM (Phase 4); Deep stays mock. On any
+  // 5) Generate — both Kâhin and Deep can use the real LLM (Phase 4/5). On any
   // failure generateReading throws (UPSTREAM_ERROR) and quota is NOT spent.
   const promptVersion = promptVersionFor(tier, cfg.activePromptVersions);
   const messages = await buildMessages(c.env, promptVersion, {
@@ -96,16 +96,17 @@ export async function handleReading(c: Ctx, tier: ReadingType): Promise<Response
     category,
     locale: req.locale,
   });
-  const maxTokens = tier === 'kahin' ? cfg.kahinMaxTokens : cfg.deepMaxTokens;
-  const model = tier === 'kahin' ? cfg.kahinModel : cfg.deepModel;
+  const isKahin = tier === 'kahin';
   const llm = await generateReading(c.env, cfg, {
     tier,
     messages,
     locale: req.locale,
     category,
-    model,
-    maxTokens,
-    temperature: cfg.llmTemperature,
+    model: isKahin ? cfg.kahinModel : cfg.deepModel,
+    maxTokens: isKahin ? cfg.kahinMaxTokens : cfg.deepMaxTokens,
+    temperature: isKahin ? cfg.llmTemperature : cfg.deepTemperature,
+    // Deep readings are longer → allow more time.
+    timeoutMs: isKahin ? 20000 : 30000,
   });
 
   // 6) Consume quota atomically AFTER a successful reading.

@@ -5,6 +5,8 @@ import {
   generateReading,
   resolveProvider,
   sanitizeOutput,
+  sanitizeDeepOutput,
+  sanitizeReading,
   type LlmInput,
 } from '../src/services/llmService';
 import { ApiError } from '../src/lib/errors';
@@ -82,9 +84,21 @@ describe('resolveProvider (env overrides config; the original bug)', () => {
     expect(resolveProvider(env, DEFAULT_CONFIG, 'kahin').provider).toBe('mock');
   });
 
-  it('Deep: ALWAYS mock regardless of env/key', () => {
+  it('Deep: USE_MOCK_LLM="false" + key → openai (Phase 5: Deep is no longer pinned to mock)', () => {
     const env = { USE_MOCK_LLM: 'false', OPENAI_API_KEY: 'sk-test' } as Env;
+    expect(resolveProvider(env, DEFAULT_CONFIG, 'deep').provider).toBe('openai');
+  });
+
+  it('Deep: USE_MOCK_LLM="true" → mock', () => {
+    const env = { USE_MOCK_LLM: 'true', OPENAI_API_KEY: 'sk-test' } as Env;
     expect(resolveProvider(env, DEFAULT_CONFIG, 'deep').provider).toBe('mock');
+  });
+
+  it('Deep: USE_MOCK_LLM="false" but NO key → openai provider (route returns UPSTREAM_ERROR)', () => {
+    const env = { USE_MOCK_LLM: 'false' } as Env;
+    const r = resolveProvider(env, DEFAULT_CONFIG, 'deep');
+    expect(r.provider).toBe('openai');
+    expect(r.hasKey).toBe(false);
   });
 });
 
@@ -115,19 +129,37 @@ describe('generateReading — env-driven real path (the bug scenario, end to end
     expect(calls).not.toHaveBeenCalled();
   });
 
-  it('Deep with USE_MOCK_LLM="false" + key still returns mock (never calls OpenAI)', async () => {
-    const calls = mockFetchOnce(() => new Response('{}', { status: 200 }));
+  it('Deep with USE_MOCK_LLM="false" + key CALLS OpenAI (Phase 5)', async () => {
+    const calls = mockFetchOnce(() =>
+      new Response(
+        JSON.stringify({
+          choices: [{ message: { content: 'Görünen işaret budur.\n\nİçindeki asıl soru şudur.' } }],
+          usage: { prompt_tokens: 100, completion_tokens: 200, total_tokens: 300 },
+        }),
+        { status: 200 },
+      ),
+    );
     const env = { USE_MOCK_LLM: 'false', OPENAI_API_KEY: 'sk-test' } as Env;
     const r = await generateReading(env, DEFAULT_CONFIG, kahinInput({ tier: 'deep' }));
-    expect(r.model).toBe('mock');
+    expect(calls).toHaveBeenCalledOnce();
+    expect(r.model).toBe('gpt-4o-mini');
+    expect(r.text).toContain('\n\n'); // multi-paragraph preserved for Deep
+  });
+
+  it('Deep with USE_MOCK_LLM="false" + NO key → UPSTREAM_ERROR, no fetch, (route: no quota spend)', async () => {
+    const calls = mockFetchOnce(() => new Response('{}', { status: 200 }));
+    const env = { USE_MOCK_LLM: 'false' } as Env;
+    await expect(generateReading(env, DEFAULT_CONFIG, kahinInput({ tier: 'deep' }))).rejects.toMatchObject({
+      code: 'UPSTREAM_ERROR',
+    });
     expect(calls).not.toHaveBeenCalled();
   });
 });
 
 describe('generateReading — mock path', () => {
-  it('Deep ALWAYS uses the mock, even with real config + key', async () => {
-    const env = { OPENAI_API_KEY: 'sk-test' } as Env;
-    const r = await generateReading(env, realConfig, kahinInput({ tier: 'deep' }));
+  it('Deep uses the mock when useMockLLM=true (even with a key)', async () => {
+    const env = { USE_MOCK_LLM: 'true', OPENAI_API_KEY: 'sk-test' } as Env;
+    const r = await generateReading(env, DEFAULT_CONFIG, kahinInput({ tier: 'deep' }));
     expect(r.model).toBe('mock');
     expect(r.text.length).toBeGreaterThan(50);
   });
@@ -232,5 +264,44 @@ describe('sanitizeOutput', () => {
   it('keeps short readings unchanged (within the word budget)', () => {
     const short = 'A waiting heart sees clearer. Stay steady and let the moment ripen.';
     expect(sanitizeOutput(short)).toBe(short);
+  });
+});
+
+describe('sanitizeDeepOutput', () => {
+  it('PRESERVES paragraph breaks (Deep is multi-paragraph)', () => {
+    const multi = 'The visible sign.\n\nThe real question.\n\nA possible direction.';
+    const out = sanitizeDeepOutput(multi);
+    expect(out).toContain('\n\n');
+    expect(out.split('\n\n').length).toBe(3);
+  });
+
+  it('collapses 3+ newlines to a single paragraph break', () => {
+    expect(sanitizeDeepOutput('a\n\n\n\n\nb')).toBe('a\n\nb');
+  });
+
+  it('strips leaked technical wording but keeps the prose', () => {
+    const out = sanitizeDeepOutput('As an AI, the orb shows a path.\n\nOpenAI says wait.');
+    expect(out).not.toMatch(/as an ai|openai/i);
+    expect(out).toContain('path');
+  });
+
+  it('clamps a very long Deep reading to ~maxWords words', () => {
+    const long = Array.from({ length: 200 }, (_, i) => `Sentence number ${i} here.`).join(' ');
+    const out = sanitizeDeepOutput(long, 460);
+    const words = out.split(/\s+/).filter(Boolean).length;
+    expect(words).toBeLessThanOrEqual(460);
+    expect(words).toBeGreaterThan(300);
+    expect(out).toMatch(/[.!?…]$/);
+  });
+});
+
+describe('sanitizeReading dispatch', () => {
+  it('kahin → single paragraph (no newlines)', () => {
+    const out = sanitizeReading('Line one.\n\nLine two.', 'kahin');
+    expect(out).not.toMatch(/\n/);
+  });
+  it('deep → preserves paragraphs', () => {
+    const out = sanitizeReading('Line one.\n\nLine two.', 'deep');
+    expect(out).toContain('\n\n');
   });
 });

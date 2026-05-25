@@ -14,7 +14,9 @@ export interface AppConfig {
   // Single source of truth for model names. Overridable via KV config.
   kahinModel: string;
   deepModel: string;
+  // llmTemperature is the Kâhin temperature; deepTemperature tunes Deep separately.
   llmTemperature: number;
+  deepTemperature: number;
   questionMaxChars: number;
   whisperMaxChars: number;
   activePromptVersions: { kahin: string; deep: string };
@@ -35,10 +37,11 @@ export const DEFAULT_CONFIG: AppConfig = {
   premiumDeepDailyLimit: 3,
   deepTrialLifetime: 1,
   kahinMaxTokens: 220,
-  deepMaxTokens: 700,
+  deepMaxTokens: 800,
   kahinModel: 'gpt-4o-mini',
   deepModel: 'gpt-4o-mini',
   llmTemperature: 0.8,
+  deepTemperature: 0.78,
   questionMaxChars: 200,
   whisperMaxChars: 120,
   activePromptVersions: { kahin: 'prompt_kahin_v1', deep: 'prompt_deep_v1' },
@@ -88,6 +91,7 @@ function mergeConfig(partial: unknown): AppConfig {
     kahinModel: str(p.kahinModel, DEFAULT_CONFIG.kahinModel),
     deepModel: str(p.deepModel, DEFAULT_CONFIG.deepModel),
     llmTemperature: num(p.llmTemperature, DEFAULT_CONFIG.llmTemperature),
+    deepTemperature: num(p.deepTemperature, DEFAULT_CONFIG.deepTemperature),
     questionMaxChars: num(p.questionMaxChars, DEFAULT_CONFIG.questionMaxChars),
     whisperMaxChars: num(p.whisperMaxChars, DEFAULT_CONFIG.whisperMaxChars),
     activePromptVersions: {

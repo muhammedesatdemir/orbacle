@@ -14,9 +14,10 @@ const LOCAL_BASE_URL = Platform.OS === 'android' ? 'http://10.0.2.2:8787' : 'htt
 // (oracleService then stays on the local mock).
 export const API_BASE_URL = LOCAL_BASE_URL;
 
-// Per-tier backend switches. Phase 4: Kâhin on, Deep off (stays mock).
+// Per-tier backend switches. Phase 5: both Kâhin and Deep use the backend.
+// Set either to false to fall back to that tier's local mock.
 export const USE_BACKEND_KAHIN = true;
-export const USE_BACKEND_DEEP = false;
+export const USE_BACKEND_DEEP = true;
 
 // Network timeout for backend calls.
 export const API_TIMEOUT_MS = 20000;

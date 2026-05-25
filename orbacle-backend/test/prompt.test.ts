@@ -66,3 +66,44 @@ describe('Kâhin prompt — role separation', () => {
     expect(user).toContain('UNIQUE_TEST_QUESTION_12345');
   });
 });
+
+async function deepSystem(category: Parameters<typeof buildMessages>[2]['category']) {
+  const msgs = await buildMessages(env, 'prompt_deep_v1', {
+    question: 'Should I risk my savings on this?',
+    whisper: 'A patient purse outlasts a hurried wallet.',
+    category,
+    locale: 'en',
+  });
+  return msgs.find((m) => m.role === 'system')?.content ?? '';
+}
+
+describe('Deep prompt — structure & length', () => {
+  it('states the 250-400 word, multi-paragraph deep structure', async () => {
+    const sys = (await deepSystem('general')).toLowerCase();
+    expect(sys).toContain('250-400 words');
+    expect(sys).toMatch(/visible sign/);
+    expect(sys).toMatch(/real question/);
+  });
+});
+
+describe('Deep prompt — safety guards', () => {
+  it('forbids definite prediction and professional advice', async () => {
+    const sys = (await deepSystem('general')).toLowerCase();
+    expect(sys).toMatch(/never give a definite prediction/);
+    expect(sys).toMatch(/professional|medical|legal|financial/);
+  });
+  it('money: forbids financial/investment advice and risk encouragement', async () => {
+    const sys = (await deepSystem('money')).toLowerCase();
+    expect(sys).toMatch(/never give financial\/investment advice/);
+    expect(sys).toMatch(/buy\/sell\/invest/);
+    expect(sys).toMatch(/budget limit|afford to lose|research/);
+  });
+  it('competition: never states a definite result or score', async () => {
+    const sys = (await deepSystem('competition')).toLowerCase();
+    expect(sys).toMatch(/never state a definite result or score/);
+  });
+  it('love: no definite claim about another person feelings', async () => {
+    const sys = (await deepSystem('love')).toLowerCase();
+    expect(sys).toMatch(/no definite claim about another person|no manipulation/);
+  });
+});
